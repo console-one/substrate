@@ -1,0 +1,37 @@
+-- Labelled Task Queue
+-- Realizes: packages/core/specs/requirements/taskmanagement/labelledtaskqueue.md
+--
+-- A task queue where workers submit typed work items, claim them
+-- exclusively, and complete them with typed output. The path of each
+-- task IS its identity: `tasks.{id}`. No redundant id field.
+--
+-- Coverage of the spec's requirements:
+--   R1   — identity (path), status, input, output, assignee, deadline, labels
+--   R2   — status is one of pending | active | done | expired
+--   R3   — well-formed tasks accepted immediately at status "pending"
+--   R4   — malformed tasks rejected by schema (missing required fields)
+--   R5/6 — atomic claim via batched mount with where-gate on status=pending
+--          (concurrent exclusivity: the kernel's single-writer semantics
+--           give us mutual exclusion per block)
+--   R7   — only assigned worker completes: enforced by where-gate on
+--          assignee at completion
+--   R8   — completion sets status=done and attaches output atomically
+--   R9/10/14 — deadline expiration as visible status change (while-gate;
+--          TODO: needs temporal predicate wiring — deferred)
+--   R11/12 — label constraints (TODO: deferred — needs label registry)
+--   R13  — derived priority via gap scoring (TODO: tasks surface as
+--          gaps when input is unset; kernel's gap priority handles it)
+
+-- Task schema. Each task lives at `tasks.{id}` with this shape.
+-- NOTE: input/output are typed as `string` for now — the DSL has no
+-- `any` keyword (it parses as a name ref). That's a documented gap.
+-- For real use cases, each concrete task type would narrow input/output
+-- to domain-specific schemas.
+tasks.* = {
+  status: "pending" | "active" | "done" | "expired",
+  input: string,
+  output?: string,
+  assignee?: string,
+  deadline?: number,
+  labels?: [string]
+}

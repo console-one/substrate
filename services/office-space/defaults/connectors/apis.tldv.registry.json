@@ -1,0 +1,137 @@
+{
+  "version": "1.0",
+  "connectorId": "tldv",
+  "apis": [
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "tldv.list_meetings",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://pasta.tldv.io/v1alpha1/meetings?query={{arg.query}}&page={{arg.page}}&limit={{arg.limit}}&from={{arg.from}}&to={{arg.to}}&onlyParticipated={{arg.onlyParticipated}}&meetingType={{arg.meetingType}}",
+        "headers": {
+          "x-api-key": "{{ref.apiKey}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "apiKey": { "$ref": "binding.tldv.apiKey" },
+          "query": {
+            "$arg": "query",
+            "description": "Search query string",
+            "type": "string",
+            "required": false
+          },
+          "page": {
+            "$arg": "page",
+            "description": "Page number (default 1)",
+            "type": "number",
+            "required": false,
+            "default": 1
+          },
+          "limit": {
+            "$arg": "limit",
+            "description": "Results per page (default 50)",
+            "type": "number",
+            "required": false,
+            "default": 50
+          },
+          "from": {
+            "$arg": "from",
+            "description": "Filter meetings from this date/time (API accepts string)",
+            "type": "string",
+            "required": false
+          },
+          "to": {
+            "$arg": "to",
+            "description": "Filter meetings up to this date/time (API accepts string)",
+            "type": "string",
+            "required": false
+          },
+          "onlyParticipated": {
+            "$arg": "onlyParticipated",
+            "description": "If true, only meetings the user participated in",
+            "type": "boolean",
+            "required": false,
+            "default": false
+          },
+          "meetingType": {
+            "$arg": "meetingType",
+            "description": "Filter by meeting type: internal | external",
+            "type": "string",
+            "required": false
+          }
+        },
+        "description": "List meetings"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "tldv.get_meeting",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://pasta.tldv.io/v1alpha1/meetings/{{arg.meetingId}}",
+        "headers": {
+          "x-api-key": "{{ref.apiKey}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "apiKey": { "$ref": "binding.tldv.apiKey" },
+          "meetingId": {
+            "$arg": "meetingId",
+            "description": "Meeting ID",
+            "type": "string",
+            "required": true
+          }
+        },
+        "description": "Get metadata by meeting id"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "tldv.get_transcript",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://pasta.tldv.io/v1alpha1/meetings/{{arg.meetingId}}/transcript",
+        "headers": {
+          "x-api-key": "{{ref.apiKey}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "apiKey": { "$ref": "binding.tldv.apiKey" },
+          "meetingId": {
+            "$arg": "meetingId",
+            "description": "Meeting ID",
+            "type": "string",
+            "required": true
+          }
+        },
+        "description": "Get full transcript by meeting id"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "tldv.get_highlights",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://pasta.tldv.io/v1alpha1/meetings/{{arg.meetingId}}/highlights",
+        "headers": {
+          "x-api-key": "{{ref.apiKey}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "apiKey": { "$ref": "binding.tldv.apiKey" },
+          "meetingId": {
+            "$arg": "meetingId",
+            "description": "Meeting ID",
+            "type": "string",
+            "required": true
+          }
+        },
+        "description": "Get highlights by meeting id"
+      }
+    }
+  ]
+}

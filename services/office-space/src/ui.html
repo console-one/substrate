@@ -1,0 +1,1389 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Office Space — Workspace</title>
+<style>
+  /* LessWrong-style aesthetic: warm cream background, serif body type
+     for content (feed cards, narratives), sans-serif for chrome
+     (headers, nav), monospace reserved for code paths and ft text.
+     Generous whitespace, subtle gentle borders, content-first. */
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  :root {
+    --bg:           #fdfaf3;
+    --bg-soft:      #faf6ec;
+    --bg-card:      #ffffff;
+    --bg-rail:      #f5f1e6;
+    --bg-input:     #ffffff;
+    --bg-button:    #5e7ec5;
+    --bg-button-hv: #4a6fa9;
+    --text:         #2a2a2a;
+    --text-soft:    #5b5b5b;
+    --text-mute:    #8a8a8a;
+    --text-dim:     #b0a99a;
+    --link:         #4a6fa9;
+    --link-hv:      #5e7ec5;
+    --karma:        #b08c4a;
+    --karma-bg:     #f7f0d8;
+    --planned:      #a08050;  /* warm amber */
+    --recent:       #6c8a55;  /* sage */
+    --topic:        #4a6fa9;  /* LW blue */
+    --bad:          #b85a4a;
+    --good:         #6c8a55;
+    --border:       #e5dfd0;
+    --border-soft:  #efe9da;
+    --serif:        Charter, "Bitstream Charter", "Sitka Text", "Iowan Old Style", "Apple Garamond", Georgia, serif;
+    --sans:         -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono:         ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  body {
+    font-family: var(--serif);
+    background: var(--bg); color: var(--text);
+    display: grid; grid-template-rows: auto auto 1fr; height: 100vh;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ─── HEADER ────────────────────────────────────────────── */
+  header {
+    padding: 12px 22px; background: var(--bg-soft);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 18px; font-family: var(--sans); font-size: 13px;
+  }
+  header .title {
+    font-family: var(--serif); font-style: italic; font-size: 18px;
+    font-weight: 500; color: var(--text); letter-spacing: 0.01em;
+  }
+  header .status { color: var(--text-mute); font-size: 12px; }
+  header .status.ok  { color: var(--good); }
+  header .status.bad { color: var(--bad); }
+  header label { color: var(--text-mute); font-size: 12px; }
+  header input {
+    background: var(--bg-input); color: var(--text);
+    border: 1px solid var(--border); padding: 4px 8px; border-radius: 2px;
+    font: inherit;
+  }
+  .err {
+    color: var(--bad); padding: 8px 22px;
+    background: #fbeae6; border-bottom: 1px solid #f1c8be;
+    font-family: var(--sans); font-size: 12px;
+  }
+  .err:empty { display: none; }
+
+  /* ─── MAIN GRID ─────────────────────────────────────────── */
+  main {
+    display: grid; grid-template-columns: 240px 1fr 320px;
+    overflow: hidden; min-height: 0;
+  }
+  .sidebar {
+    background: var(--bg-rail); border-right: 1px solid var(--border);
+    overflow: auto; min-height: 0;
+    display: flex; flex-direction: column;
+  }
+  /* Center-column behavior is content-driven:
+     - No file open: Feed fills the whole column (the homepage view).
+     - File open: Feed compresses to a strip on top, Editor (the work
+       surface) takes the larger share below.
+     Toggled by the .has-file class added in JS when selectFile fires. */
+  .center-stack {
+    display: grid; grid-template-rows: 1fr;
+    min-height: 0; overflow: hidden; background: var(--bg);
+  }
+  .center-stack.has-file { grid-template-rows: 1fr 2fr; }
+  .center-stack:not(.has-file) .editor-pane { display: none; }
+  .center-stack > section { min-height: 0; overflow: hidden; }
+
+  /* ─── PANEL CHROME (shared) ─────────────────────────────── */
+  .panel-header {
+    padding: 12px 22px; border-bottom: 1px solid var(--border);
+    color: var(--text-mute); font-family: var(--sans);
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    font-weight: 600;
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--bg-soft);
+  }
+  .panel-header .action {
+    color: var(--link); cursor: pointer; font-size: 11px;
+    text-transform: none; letter-spacing: 0; font-weight: 400;
+    user-select: none;
+  }
+  .panel-header .action:hover { color: var(--link-hv); text-decoration: underline; }
+
+  /* ─── FEED ──────────────────────────────────────────────── */
+  .center-stack .feed-pane {
+    display: flex; flex-direction: column;
+    background: var(--bg); border-bottom: 1px solid var(--border);
+  }
+  .feed-list { flex: 1 1 auto; overflow: auto; padding: 0 0 24px; }
+
+  .feed-section-header {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 18px 28px 8px; color: var(--text-mute);
+    font-family: var(--sans); font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.12em; font-weight: 600;
+  }
+  .feed-section-header .count {
+    color: var(--text-dim); text-transform: none; letter-spacing: 0;
+    font-weight: 400; font-size: 11px;
+  }
+  .feed-section-empty {
+    color: var(--text-dim); font-style: italic;
+    font-family: var(--sans); font-size: 12px;
+    padding: 4px 28px 8px;
+  }
+
+  .feed-card {
+    margin: 6px 22px; padding: 14px 18px;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-left: 3px solid var(--topic);
+    border-radius: 2px;
+    font-family: var(--serif); font-size: 14px;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.02);
+  }
+  .feed-card.planned { border-left-color: var(--planned); }
+  .feed-card.recent  { border-left-color: var(--recent); }
+  .feed-card.topic   { border-left-color: var(--topic); }
+  .feed-card .head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 8px; gap: 12px;
+  }
+  .feed-card .id {
+    color: var(--text); font-weight: 500;
+    font-family: var(--serif); font-size: 15px;
+    line-height: 1.3;
+  }
+  .feed-card .score {
+    color: var(--karma); font-weight: 600; font-size: 11px;
+    background: var(--karma-bg); padding: 2px 9px; border-radius: 10px;
+    font-family: var(--sans); font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
+  }
+  .feed-card .when {
+    color: var(--text-mute); font-family: var(--sans); font-size: 11px;
+    font-variant-numeric: tabular-nums; flex-shrink: 0;
+  }
+  .feed-card .author {
+    color: var(--text-mute); font-family: var(--sans); font-size: 11px;
+    margin-bottom: 6px;
+  }
+  .feed-card .author.upstream { color: var(--link); }
+  .feed-card .signals {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;
+    font-family: var(--sans); font-size: 10px; color: var(--text-mute);
+  }
+  .feed-card .signals .sig {
+    background: var(--bg-soft); border: 1px solid var(--border-soft);
+    padding: 2px 8px; border-radius: 8px;
+  }
+  .feed-card .signals .sig strong { color: var(--text-soft); font-weight: 500; }
+  .feed-card .stats {
+    color: var(--text-mute); font-family: var(--sans); font-size: 11px;
+    margin-bottom: 6px;
+  }
+  .feed-card .stats .gap  { color: var(--planned); }
+  .feed-card .stats .conc { color: var(--recent); }
+  .feed-card .paths {
+    color: var(--link); font-family: var(--mono); font-size: 11px;
+    margin: 0; padding: 0; list-style: none;
+    max-height: 120px; overflow: auto; line-height: 1.45;
+  }
+  .feed-card .paths li { padding: 1px 0; }
+  .feed-empty {
+    color: var(--text-dim); font-style: italic;
+    font-family: var(--sans); font-size: 13px;
+    padding: 24px; text-align: center;
+  }
+
+  /* ─── RIGHT RAIL ────────────────────────────────────────── */
+  .right-rail {
+    display: flex; flex-direction: column;
+    border-left: 1px solid var(--border); min-height: 0; overflow: hidden;
+  }
+  .right-rail .panel {
+    flex: 1 1 auto;
+    display: flex; flex-direction: column; min-height: 0;
+    background: var(--bg-rail); overflow: hidden;
+  }
+  .doc-pane {
+    flex: 1 1 auto; overflow: auto; padding: 12px 22px;
+    font-family: var(--mono); font-size: 11px; color: var(--text-soft);
+    white-space: pre-wrap; word-break: break-word; line-height: 1.6;
+  }
+  .doc-pane .empty {
+    color: var(--text-dim); font-family: var(--sans); font-style: italic;
+    padding: 10px 0; font-size: 12px;
+  }
+  .doc-pane .reader-meta {
+    color: var(--text-dim); font-family: var(--sans);
+    font-size: 10px; margin-bottom: 8px;
+  }
+  .doc-pane .doc-line { white-space: pre-wrap; }
+  .doc-pane .doc-path { color: var(--link); }
+  .doc-pane .doc-op   { color: var(--planned); }
+  .doc-pane .doc-str  { color: var(--good); }
+  .doc-pane .doc-num  { color: var(--karma); }
+
+  /* ─── SIDEBAR LISTS (Files / Gaps) ──────────────────────── */
+  .file-list, .gap-list {
+    list-style: none; margin: 0; padding: 6px 0; flex: 1 1 auto;
+  }
+  .file-list li, .gap-list li {
+    padding: 8px 22px; color: var(--text-soft);
+    font-family: var(--sans); font-size: 13px;
+    cursor: pointer; border-left: 3px solid transparent;
+  }
+  .file-list li:hover {
+    background: var(--bg-soft); color: var(--text);
+  }
+  .file-list li.active {
+    background: var(--bg-card); color: var(--text);
+    border-left-color: var(--link); font-weight: 500;
+  }
+  .gap-list li { cursor: default; }
+  .gap-list .gap-path {
+    color: var(--planned); font-family: var(--mono); font-size: 11px;
+    display: block;
+  }
+  .gap-list .gap-type {
+    color: var(--text-mute); font-family: var(--sans); font-size: 10px;
+  }
+  .file-list .empty, .gap-list .empty {
+    color: var(--text-dim); font-style: italic;
+    font-family: var(--sans); font-size: 12px;
+    padding: 12px 22px; cursor: default;
+  }
+
+  /* ─── EDITOR ────────────────────────────────────────────── */
+  /* Editor + live preview. Source on top (the function definition);
+     rendered preview below (the function applied to current state).
+     Injections like {{task.foo.title}} resolve to the value at that
+     path; if the path changes, the preview updates on next event. */
+  .editor-pane {
+    display: grid; grid-template-rows: auto 1fr 1fr auto;
+    min-height: 0; overflow: hidden; background: var(--bg-card);
+  }
+  .editor-pane .title-row {
+    padding: 12px 22px; border-bottom: 1px solid var(--border);
+    color: var(--text); font-family: var(--sans); font-size: 12px;
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--bg-soft);
+  }
+  #current-file { font-family: var(--mono); color: var(--link); }
+  #editor {
+    resize: none; border: none; outline: none;
+    background: var(--bg-card); color: var(--text);
+    padding: 16px 28px;
+    font-family: var(--mono); font-size: 13px; line-height: 1.6;
+    overflow: auto;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  #editor:disabled { background: var(--bg-soft); color: var(--text-dim); }
+  .editor-preview {
+    overflow: auto; padding: 18px 28px;
+    background: var(--bg);
+    font-family: var(--serif); font-size: 15px; line-height: 1.7;
+    color: var(--text);
+    white-space: pre-wrap; word-wrap: break-word;
+  }
+  .editor-preview .preview-empty {
+    color: var(--text-dim); font-style: italic; font-family: var(--sans); font-size: 13px;
+  }
+  .editor-preview .preview-label {
+    display: inline-block; color: var(--text-mute); font-family: var(--sans);
+    font-size: 9px; text-transform: uppercase; letter-spacing: 0.12em;
+    font-weight: 600; margin: 4px 0 8px;
+  }
+  /* Transcluded narrative — visually distinct so the user sees the
+     boundary between this narrative and the one it includes. */
+  .editor-preview .transcluded {
+    margin: 8px 0; padding: 6px 14px;
+    background: var(--bg-soft);
+    border-left: 3px solid var(--text-dim);
+    border-radius: 2px;
+  }
+  .editor-preview .transcluded-label {
+    color: var(--text-mute); font-family: var(--sans);
+    font-size: 10px; font-weight: 500; margin-bottom: 6px;
+    letter-spacing: 0.04em;
+  }
+  .editor-preview .meta-badge {
+    display: inline-block;
+    background: var(--bg-soft); color: var(--text-mute);
+    font-family: var(--sans); font-size: 10px; font-weight: 500;
+    border: 1px solid var(--border-soft); border-radius: 10px;
+    padding: 2px 10px; margin-bottom: 8px;
+    cursor: help;
+  }
+  /* Inline injection: {{path : kind}} resolved against current state.
+     Three states:
+       resolved — value present + type matches: subtle dotted blue
+       missing  — schema declared but no value: dashed amber + italic
+                  with the path AND requested kind shown inline so the
+                  user can SEE what the narrative is asking the
+                  workspace to provide */
+  .injection {
+    padding: 0 1px;
+    cursor: help;
+  }
+  .injection.resolved { border-bottom: 1px dotted var(--link); }
+  .injection.missing {
+    color: var(--planned); font-style: italic;
+    background: #faf2e1; border: 1px dashed #d4b88a;
+    border-radius: 2px; padding: 1px 4px;
+    font-family: var(--mono); font-size: 0.92em;
+  }
+  .editor-pane .status-line {
+    padding: 8px 22px; color: var(--text-mute);
+    font-family: var(--sans); font-size: 11px;
+    border-top: 1px solid var(--border-soft);
+  }
+
+  button {
+    background: var(--bg-button); color: #ffffff;
+    border: 1px solid var(--bg-button); padding: 4px 18px;
+    border-radius: 2px; font-family: var(--sans); font-size: 13px;
+    font-weight: 500; cursor: pointer;
+  }
+  button:hover { background: var(--bg-button-hv); border-color: var(--bg-button-hv); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* ─── SCROLLBARS (subtle, on the lighter palette) ───────── */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: #d6cfbb; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #beb6a0; }
+  ::-webkit-scrollbar-track { background: transparent; }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="title">Office Space — Workspace</span>
+  <label>user <input id="user" value="alice" style="width: 100px"></label>
+  <button id="connect">connect</button>
+  <span class="status bad" id="status">idle</span>
+  <span style="flex:1"></span>
+</header>
+
+<div class="err" id="err"></div>
+
+<main>
+  <aside class="sidebar">
+    <div class="panel-header">
+      <span>Files</span>
+      <span class="action" id="new-file">+ new</span>
+    </div>
+    <ul class="file-list" id="file-list">
+      <li class="empty">(not connected)</li>
+    </ul>
+  </aside>
+
+  <div class="center-stack" id="center-stack">
+    <section class="feed-pane">
+      <div class="panel-header">
+        <span>Feed</span>
+        <span id="feed-count" style="font-size:11px;color:#596273">0 items</span>
+      </div>
+      <div class="feed-list" id="feed-list">
+        <div class="feed-empty">(not connected)</div>
+      </div>
+    </section>
+    <section class="editor-pane">
+      <div class="title-row">
+        <span id="current-file">(no file selected)</span>
+        <span style="display:flex;gap:12px;align-items:center">
+          <span class="action" id="fork-file" style="font-family:var(--sans);font-size:11px;color:var(--link);cursor:pointer">fork</span>
+          <span class="status-line" id="editor-status" style="border:none;padding:0">idle</span>
+        </span>
+      </div>
+      <textarea id="editor" disabled placeholder="Source — type {{path.to.value}} to inject live values from elsewhere in the workspace"></textarea>
+      <div class="editor-preview" id="editor-preview">
+        <div class="preview-empty">(rendered preview appears here as you type)</div>
+      </div>
+      <div class="status-line" id="save-state">&nbsp;</div>
+    </section>
+  </div>
+
+  <aside class="right-rail">
+    <section class="panel">
+      <div class="panel-header">
+        <span>Tools</span>
+        <span id="tools-count" style="font-size:11px;color:#596273">0</span>
+      </div>
+      <div class="doc-pane" id="tools-doc">
+        <div class="empty">(not connected)</div>
+      </div>
+    </section>
+  </aside>
+</main>
+
+
+<script src="/bundle.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  // ─────────────────────────────────────────────────────────────
+  // Workspace UI — Cut B (UI as reader projection).
+  //
+  // Query the local Sequence for a scoped view of `files.*`,
+  // render structurally (file list + selected-file editor + gaps
+  // panel). Every render event re-queries so the UI reflects
+  // whatever the topology has converged to.
+  //
+  // The UI drives writes through the same ws as the dual-editor
+  // test: client.mount(text, {mutable:true}) for file content so
+  // successive overwrites don't lock a literal schema.
+  // ─────────────────────────────────────────────────────────────
+
+  var statusEl   = document.getElementById('status');
+  var errEl      = document.getElementById('err');
+  var userEl     = document.getElementById('user');
+  var connectBtn = document.getElementById('connect');
+  var editorEl   = document.getElementById('editor');
+  var editorStatusEl = document.getElementById('editor-status');
+  var saveStateEl    = document.getElementById('save-state');
+  var fileListEl = document.getElementById('file-list');
+  var toolsDocEl  = document.getElementById('tools-doc');
+  var toolsCountEl = document.getElementById('tools-count');
+  var feedListEl = document.getElementById('feed-list');
+  var feedCountEl = document.getElementById('feed-count');
+  // Scope is set by clicking a thing (e.g. a Files entry → editor
+  // scopes to that file). Free-form path-prefix typing was substrate
+  // tooling dressed as a feature — removed. Local state remains so
+  // future click-driven scope handlers can populate it; API plumbing
+  // (client.planned/recent/feed accept scopePrefix) is intact.
+  var feedScope = '';
+  // Substrate-style expand-tokens: each compressed group renders with
+  // a token; user clicks to expand; the token goes into this set;
+  // re-render emits the expanded form. Mirrors HoistOptions.expanded
+  // in the kernel. UI state for now (not yet round-tripped to a
+  // substrate expand-tool) but uses the same convention.
+  var expandedTokens = Object.create(null);
+  var currentFileEl = document.getElementById('current-file');
+  var newFileBtn = document.getElementById('new-file');
+
+  var selectedFile = null;     // file id (the key under files.*)
+  var localLatest  = '';       // last value we uplinked for selected file
+  var remoteLatest = '';       // last remote value seen for selected file
+  var pushDebounce = null;
+
+  function setStatus(text, kind) {
+    statusEl.textContent = text;
+    statusEl.className = 'status ' + (kind || '');
+  }
+  function showError(msg) { errEl.textContent = msg || ''; }
+  function escapeForFt(s) {
+    return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
+  }
+  function unescapeFromFt(s) {
+    return s.replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+  }
+
+  function contentPath(fileId) { return 'files.' + fileId + '.content'; }
+
+  // ─── File list projection ───────────────────────────────────
+  function renderFileList() {
+    if (!window.officeSpace || !window.officeSpace.status.connected) {
+      fileListEl.innerHTML = '<li class="empty">(not connected)</li>';
+      return;
+    }
+    var keys = window.officeSpace.keys('files');
+    if (!keys || keys.length === 0) {
+      fileListEl.innerHTML = '<li class="empty">(no files — click + new)</li>';
+      return;
+    }
+    keys.sort();
+    var html = '';
+    for (var i = 0; i < keys.length; i++) {
+      var k = keys[i];
+      var cls = (k === selectedFile) ? 'active' : '';
+      html += '<li class="' + cls + '" data-file="' + k + '">' + k + '</li>';
+    }
+    fileListEl.innerHTML = html;
+    // Wire click handlers — one per entry.
+    var items = fileListEl.querySelectorAll('li[data-file]');
+    for (var j = 0; j < items.length; j++) {
+      (function (el) {
+        el.addEventListener('click', function () { selectFile(el.getAttribute('data-file')); });
+      })(items[j]);
+    }
+  }
+
+  // ─── Tools document (reader-as-document) ─────────────
+  // The Tools panel is the canonical example of the
+  // reader-as-document convention (specs/docs/READER_DOCUMENTS.md):
+  // the UI never queries paths directly — it asks for a named reader
+  // and renders the document the kernel returned. Adding a new
+  // document type = mount _readers.{name}.* + add a panel that calls
+  // render(name). Same shape for every panel.
+  function escapeHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  function colorizeFt(text) {
+    return escapeHtml(text)
+      .replace(/^(\s*)([a-zA-Z_][\w.*-]*)(\s*)(=|&lt;&lt;)/gm,
+               function (_, s, p, sp, op) {
+                 return s + '<span class="doc-path">' + p + '</span>' + sp +
+                        '<span class="doc-op">' + op + '</span>';
+               })
+      .replace(/"([^"\n]*)"/g, '<span class="doc-str">"$1"</span>')
+      .replace(/\b(-?\d+(?:\.\d+)?)\b/g, '<span class="doc-num">$1</span>');
+  }
+  function renderToolsDoc() {
+    if (!window.officeSpace || !window.officeSpace.status.connected) {
+      toolsDocEl.innerHTML = '<div class="empty">(not connected)</div>';
+      toolsCountEl.textContent = '0';
+      return;
+    }
+    var doc = window.officeSpace.render('tools') || '';
+    var lines = doc.split('\n');
+    // Pull header line off the body and discover instance ids
+    // (one block per state.cap_instances.{id}.*). hoistForReader
+    // always emits the meta header even when the source matches no
+    // paths, so doc.trim() being non-empty is not a usable
+    // "have tools?" signal — count the discovered ids instead.
+    var meta = '';
+    var bodyLines = [];
+    var ids = {};
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      if (line.indexOf('-- reader:') === 0) { meta = line; continue; }
+      bodyLines.push(line);
+      var m = line.match(/^state\.cap_instances\.([^.\s=]+)/);
+      if (m) ids[m[1]] = true;
+    }
+    var n = Object.keys(ids).length;
+    toolsCountEl.textContent = String(n);
+    if (n === 0) {
+      toolsDocEl.innerHTML = '<div class="empty">(no tools installed)</div>';
+      return;
+    }
+    toolsDocEl.innerHTML =
+      '<div class="reader-meta">' + escapeHtml(meta) + '</div>' +
+      '<div class="doc-line">' + colorizeFt(bodyLines.join('\n')) + '</div>';
+  }
+
+  // ─── Feed (homepage with sections) ──────────────────────────
+  // Three sections: PLANNED (fireAt > now), RECENT (last block
+  // activity), TOPICS (renderForReader scored clusters). The
+  // scope input narrows everything to a path prefix — folder-style
+  // navigation. Each card exposes WHY it's there: planned shows
+  // fireAt countdown; recent shows author + age; topic shows
+  // signal breakdown. No black box.
+  function fmtRelTime(ms) {
+    var s = Math.round(ms / 1000);
+    if (s < 60) return s + 's';
+    var m = Math.round(s / 60);
+    if (m < 60) return m + 'm';
+    var h = Math.round(m / 60);
+    if (h < 24) return h + 'h';
+    var d = Math.round(h / 24);
+    return d + 'd';
+  }
+
+  function renderPlannedCards(items) {
+    if (items.length === 0) {
+      return '<div class="feed-section-empty">Nothing scheduled.</div>';
+    }
+    var html = '';
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i];
+      var titleHtml = it.title
+        ? '<span class="id">' + escapeHtml(it.title) + '</span>'
+        : '<span class="id">' + escapeHtml(it.path) + '</span>';
+      html +=
+        '<div class="feed-card planned" data-path="' + escapeHtml(it.path) + '">' +
+          '<div class="head">' + titleHtml +
+            '<span class="when">in ' + fmtRelTime(it.msUntil) + '</span>' +
+          '</div>' +
+          '<ul class="paths"><li>' + escapeHtml(it.path) + '</li></ul>' +
+        '</div>';
+    }
+    return html;
+  }
+
+  function readableAuthor(a) {
+    if (!a) return 'system';
+    if (a === '#upstream') return 'a peer';
+    // id.sessions.c_1776... → "someone" (drop the cryptic id; the
+    // user shouldn't have to read connection identifiers)
+    if (/^id\.sessions\./.test(a)) return 'a session';
+    return a;
+  }
+
+  // Translate a substrate path into a human-readable subject. The
+  // recent feed describes activity in plain language, not by path.
+  // tasks.standup → "tasks › standup"
+  // narratives.thread1.posts.p0 → "narratives › thread1 › p0"
+  // sessions.alice → "alice's session"
+  function readablePath(p) {
+    if (!p) return 'something';
+    var m = p.match(/^sessions\.([^.]+)/);
+    if (m) return m[1] + "'s session";
+    var parts = p.split('.');
+    if (parts.length === 1) return parts[0];
+    // Drop trailing common-noise leaves to get the meaningful subject.
+    while (parts.length > 1 && /^(content|status|title|body|holder|heartbeat|connectedAt)$/.test(parts[parts.length - 1])) {
+      parts.pop();
+    }
+    return parts.join(' › ');
+  }
+
+  // Filter substrate-noise paths from a path list — these are kernel
+  // bookkeeping that mutates on every tick (heartbeats, lifecycle,
+  // emit tool traces) and would dominate the activity feed otherwise.
+  function isNoisePath(p) {
+    if (!p) return true;
+    if (p.indexOf('_') === 0) return true;                     // _blocks/_emit/_routing/_readers/etc.
+    if (p.indexOf('.heartbeat') >= 0) return true;             // session heartbeats
+    if (p.indexOf('.connectedAt') >= 0) return true;           // connect events (covered separately)
+    if (p.indexOf('.disconnectedAt') >= 0) return true;
+    if (p.indexOf('.tokenExpiry') >= 0) return true;
+    if (p.indexOf('.lastSyncSeq') >= 0) return true;
+    if (p.indexOf('.lastSyncAt') >= 0) return true;
+    if (p === 'running' || p === 'name') return true;          // bootstrap defaults
+    return false;
+  }
+
+  // Group key: (author, path-prefix-2-segments) — collapses repeat
+  // mutations to the same area by the same actor. So 5 edits to
+  // tasks.standup.* by alice within the recent window become one
+  // group "{alice} changed tasks.standup (5 changes since 6:00PM)".
+  function groupKeyFor(author, path) {
+    var prefix = path.split('.').slice(0, 2).join('.');
+    return (author || 'system') + '⟂' + prefix;
+  }
+
+  function fmtTimeOfDay(ts) {
+    var d = new Date(ts);
+    var h = d.getHours(), m = d.getMinutes();
+    var pm = h >= 12;
+    var h12 = ((h + 11) % 12) + 1;
+    var mm = m < 10 ? '0' + m : '' + m;
+    return h12 + ':' + mm + (pm ? 'PM' : 'AM');
+  }
+
+  function renderRecentCards(items) {
+    // Two passes:
+    //   (a) filter substrate-noise paths and drop blocks that have no
+    //       semantic content left
+    //   (b) group remaining mutations by (author, top-2 path segments)
+    //       and emit one collapsed card per group with an expand token.
+    //       Click expands to show every path + per-event timestamp.
+    var groups = Object.create(null);
+    var groupOrder = [];
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i];
+      var sigPaths = (it.paths || []).filter(function (p) { return !isNoisePath(p); });
+      if (sigPaths.length === 0) continue;
+      var representative = sigPaths[0];
+      var key = groupKeyFor(it.author, representative);
+      if (!(key in groups)) {
+        groups[key] = {
+          key: key,
+          author: it.author,
+          prefix: representative.split('.').slice(0, 2).join('.'),
+          events: [],   // each event: { paths, time, ageMs }
+          firstTime: 0, lastTime: 0,
+        };
+        groupOrder.push(key);
+      }
+      var g = groups[key];
+      var time = Date.now() - it.ageMs;
+      g.events.push({ paths: sigPaths, time: time, ageMs: it.ageMs });
+      if (g.firstTime === 0 || time < g.firstTime) g.firstTime = time;
+      if (time > g.lastTime) g.lastTime = time;
+    }
+
+    if (groupOrder.length === 0) {
+      return '<div class="feed-section-empty">(nothing semantic recently — only heartbeats + bookkeeping)</div>';
+    }
+
+    // Render most-recent group first (latest activity at top).
+    groupOrder.sort(function (a, b) { return groups[b].lastTime - groups[a].lastTime; });
+
+    var html = '';
+    for (var gi = 0; gi < groupOrder.length; gi++) {
+      var key = groupOrder[gi];
+      var grp = groups[key];
+      var token = 'recent.' + key;
+      var expanded = expandedTokens[token] === true;
+      var isCollapsed = grp.events.length > 1 && !expanded;
+      var authorTxt = readableAuthor(grp.author);
+      var ageMs = Date.now() - grp.lastTime;
+
+      var subject = readablePath(grp.prefix);
+      if (isCollapsed) {
+        // Collapsed card — substrate's expand-token convention.
+        // [[ token : signature ]] in hoist syntax; here we render
+        // the same idea as a clickable card.
+        html +=
+          '<div class="feed-card recent collapsed" data-expand="' + escapeHtml(token) + '" style="cursor:pointer">' +
+            '<div class="head">' +
+              '<span class="id">' + escapeHtml(authorTxt) + ' updated ' +
+                escapeHtml(subject) +
+                ' <span style="color:var(--text-mute);font-family:var(--sans);font-size:12px">' +
+                  '(' + grp.events.length + ' changes since ' + fmtTimeOfDay(grp.firstTime) + ')' +
+                '</span>' +
+              '</span>' +
+              '<span class="when">' +
+                fmtRelTime(ageMs) + ' ago · ' +
+                '<span style="color:var(--link);text-decoration:underline">show details</span>' +
+              '</span>' +
+            '</div>' +
+          '</div>';
+      } else {
+        // Expanded (or naturally singleton) — show each event with its
+        // own timestamp and the paths it touched.
+        var collapseAffordance = grp.events.length > 1
+          ? ' · <span style="color:var(--link);text-decoration:underline;cursor:pointer" data-collapse="' + escapeHtml(token) + '">collapse</span>'
+          : '';
+        var eventsHtml = '';
+        for (var ei = 0; ei < grp.events.length; ei++) {
+          var ev = grp.events[ei];
+          var pathsHtml = '';
+          var pathLimit = Math.min(ev.paths.length, 5);
+          for (var pi = 0; pi < pathLimit; pi++) {
+            pathsHtml += '<li>' + escapeHtml(ev.paths[pi]) + '</li>';
+          }
+          if (ev.paths.length > pathLimit) {
+            pathsHtml += '<li style="color:#b0a99a">… +' + (ev.paths.length - pathLimit) + ' more</li>';
+          }
+          eventsHtml +=
+            '<div style="border-top:1px solid var(--border-soft);margin-top:8px;padding-top:8px">' +
+              '<div style="color:var(--text-mute);font-family:var(--sans);font-size:11px;margin-bottom:4px">' +
+                fmtTimeOfDay(ev.time) + ' · ' + fmtRelTime(ev.ageMs) + ' ago' +
+              '</div>' +
+              '<ul class="paths">' + pathsHtml + '</ul>' +
+            '</div>';
+        }
+        html +=
+          '<div class="feed-card recent">' +
+            '<div class="head">' +
+              '<span class="id">' + escapeHtml(authorTxt) + ' updated ' +
+                escapeHtml(subject) +
+                (grp.events.length > 1 ? ' <span style="color:var(--text-mute);font-family:var(--sans);font-size:12px">(' + grp.events.length + ' changes)</span>' : '') +
+              '</span>' +
+              '<span class="when">' + fmtRelTime(ageMs) + ' ago' + collapseAffordance + '</span>' +
+            '</div>' +
+            eventsHtml +
+          '</div>';
+      }
+    }
+    return html;
+  }
+
+  function renderTopicCards(items) {
+    if (items.length === 0) {
+      return '<div class="feed-section-empty">(no clusters in scope)</div>';
+    }
+    var html = '';
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i];
+      var sigHtml = '';
+      var sigKeys = Object.keys(it.signals);
+      for (var sk = 0; sk < sigKeys.length; sk++) {
+        var k = sigKeys[sk];
+        var v = it.signals[k];
+        if (v === 0) continue;
+        sigHtml += '<span class="sig"><strong>' + escapeHtml(k) + '</strong> ' + (v).toFixed(2) + '</span>';
+      }
+      var pathsHtml = '';
+      var pathLimit = Math.min(it.paths.length, 8);
+      for (var pi = 0; pi < pathLimit; pi++) {
+        pathsHtml += '<li>' + escapeHtml(it.paths[pi]) + '</li>';
+      }
+      if (it.paths.length > pathLimit) {
+        pathsHtml += '<li style="color:#596273">… +' + (it.paths.length - pathLimit) + ' more</li>';
+      }
+      html +=
+        '<div class="feed-card topic" data-cluster-id="' + escapeHtml(it.id) + '">' +
+          '<div class="head">' +
+            '<span class="id">' + escapeHtml(it.id) + '</span>' +
+            '<span class="score">score ' + it.score.toFixed(2) + '</span>' +
+          '</div>' +
+          '<div class="signals">' + sigHtml + '</div>' +
+          '<div class="stats">' +
+            '<span class="conc">' + it.concretePaths + ' concrete</span> · ' +
+            '<span class="gap">' + it.gapCount + ' gap' + (it.gapCount === 1 ? '' : 's') + '</span> · ' +
+            '<span>' + it.totalPaths + ' total</span>' +
+          '</div>' +
+          '<ul class="paths">' + pathsHtml + '</ul>' +
+        '</div>';
+    }
+    return html;
+  }
+
+  function renderFeed() {
+    if (!window.officeSpace || !window.officeSpace.status.connected) {
+      feedListEl.innerHTML = '<div class="feed-empty">(not connected)</div>';
+      feedCountEl.textContent = '0 items';
+      return;
+    }
+    var scope = feedScope || undefined;
+    var planned = window.officeSpace.planned(scope) || [];
+    var recent  = window.officeSpace.recent(scope)  || [];
+    // NOTE: renderForReader's scored clusters surfaced as a "Topics"
+    // section here historically — they were substrate connected-
+    // component clusters dressed up as content. Not useful on a
+    // homepage, removed. The clustering surface is still available
+    // via window.officeSpace.feed() for an inspection / debug view
+    // if one is built.
+    var total = planned.length + recent.length;
+    feedCountEl.textContent = total + ' item' + (total === 1 ? '' : 's');
+    var html =
+      '<div class="feed-section-header"><span>Planned</span>' +
+        '<span class="count">' + planned.length + '</span></div>' +
+      '<div data-section="planned">' + renderPlannedCards(planned) + '</div>' +
+      '<div class="feed-section-header"><span>Recent</span>' +
+        '<span class="count">' + recent.length + '</span></div>' +
+      '<div data-section="recent">' + renderRecentCards(recent) + '</div>';
+    feedListEl.innerHTML = html;
+  }
+
+  // ─── Selected file editor ───────────────────────────────────
+  function selectFile(fileId) {
+    selectedFile = fileId;
+    // Show the user-chosen name, not the substrate path. The user
+    // doesn't need to see "files.narrative2.content" — they named
+    // the document "narrative2" and that's what they should see.
+    currentFileEl.textContent = fileId;
+    editorEl.disabled = false;
+    remoteLatest = '';
+    localLatest = '';
+    // Reveal the editor pane (hidden by default until a file is opened
+    // — keeps the homepage Feed full-height when no work is active).
+    var stack = document.getElementById('center-stack');
+    if (stack) stack.classList.add('has-file');
+    pullSelectedFileContent(/*forceOverwrite*/ true);
+    renderFileList();   // re-highlight
+    editorEl.focus();
+  }
+
+  // ─── Frontmatter ────────────────────────────────────────────
+  // Each narrative MAY carry a frontmatter block at the top:
+  //
+  //   ---
+  //   key: value
+  //   another: value
+  //   ---
+  //
+  //   the actual body...
+  //
+  // Frontmatter is metadata about the document — parser config, the
+  // scope to resolve relative paths against, visibility hints, the
+  // parent fork ref, anything that doesn't belong in the rendered
+  // body. The renderer STRIPS frontmatter before rendering. Each
+  // key:value pair is mounted to files.{name}.meta.{key} so the
+  // substrate sees the metadata as type-state — agent loops, peers,
+  // and external consumers can read it without re-parsing the body.
+  //
+  // The Obsidian / Jekyll / Hugo convention. Simple key:value (not
+  // full YAML) for v1; lift to YAML when nested values are needed.
+  var FRONTMATTER_RE = /^---\s*\n([\s\S]*?)\n---\s*\n?/;
+  function extractFrontmatter(source) {
+    if (!source) return { meta: {}, body: '' };
+    var m = source.match(FRONTMATTER_RE);
+    if (!m) return { meta: {}, body: source };
+    var meta = {};
+    var lines = m[1].split('\n');
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].trim();
+      if (!line || line.charAt(0) === '#') continue;
+      var sep = line.indexOf(':');
+      if (sep < 0) continue;
+      var key = line.slice(0, sep).trim();
+      var value = line.slice(sep + 1).trim();
+      if (!/^[a-zA-Z_][\w]*$/.test(key)) continue;
+      meta[key] = value;
+    }
+    return { meta: meta, body: source.slice(m[0].length) };
+  }
+
+  // ─── Narrative injections + transclusion ───────────────────
+  // Editor source supports two marker shapes:
+  //
+  //   {{path}}            — value injection. Resolves to the value
+  //   {{path : kind}}       at the path; declares a typed schema if
+  //                         none exists; renders gap-style if unfilled.
+  //
+  //   {{>files.foo.content}}  — transclusion. Includes another
+  //                             narrative inline; the included
+  //                             narrative's pills become this
+  //                             narrative's pills (transitively).
+  //                             Substrate-native fork = the same
+  //                             paths are shared, so filling a
+  //                             pill in EITHER narrative resolves
+  //                             it for both.
+  //
+  // Recursive: a transcluded narrative may itself transclude another.
+  // Cycle-detected with a visited set; depth bound to 10.
+  //
+  // Three preview states per injection:
+  //   resolved  — value mounted, type matches: shows the value
+  //   gap       — schema declared, no value yet: shows "needs {kind}"
+  //   pending   — neither schema nor value (we just typed it; the
+  //               schema mount is debounced): shows path with ?
+  //
+  // On every (debounced) source change we walk the injections and
+  // call officeSpace.declareType for any path that doesn't yet have
+  // a matching schema. This lifts the narrative from "just text" into
+  // a function-with-typed-inputs in the substrate.
+  var INJECTION_RE  = /\{\{\s*([a-zA-Z_][\w.*-]*)(?:\s*:\s*(string|number|boolean|any))?\s*\}\}/g;
+  var TRANSCLUDE_RE = /\{\{\s*>\s*([a-zA-Z_][\w.*-]*)\s*\}\}/g;
+  var COMBINED_RE   = /\{\{\s*(?:>\s*([a-zA-Z_][\w.*-]*)|([a-zA-Z_][\w.*-]*)(?:\s*:\s*(string|number|boolean|any))?)\s*\}\}/g;
+  var KIND_DEFAULT  = 'any';
+  var MAX_TRANSCLUDE_DEPTH = 10;
+
+  function parseInjections(source) {
+    var out = [];
+    if (!source) return out;
+    INJECTION_RE.lastIndex = 0;
+    var m;
+    while ((m = INJECTION_RE.exec(source)) !== null) {
+      out.push({
+        match: m[0],
+        index: m.index,
+        end: INJECTION_RE.lastIndex,
+        path: m[1],
+        kind: m[2] || KIND_DEFAULT,
+      });
+    }
+    return out;
+  }
+
+  function ensureInjectionSchemas(injections) {
+    if (!window.officeSpace || !window.officeSpace.declareType) return;
+    for (var i = 0; i < injections.length; i++) {
+      var inj = injections[i];
+      window.officeSpace.declareType(inj.path, inj.kind);
+    }
+  }
+
+  function formatInjectionValue(v) {
+    if (v === null || v === undefined) return '';
+    if (typeof v === 'string') return v;
+    if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+    try { return JSON.stringify(v); } catch (_) { return String(v); }
+  }
+
+  function renderInjections(source, visited, depth) {
+    if (!source) return '<div class="preview-empty">(empty)</div>';
+    visited = visited || Object.create(null);
+    depth = depth || 0;
+    var parts = [];
+    var lastIdx = 0;
+    COMBINED_RE.lastIndex = 0;
+    var m;
+    while ((m = COMBINED_RE.exec(source)) !== null) {
+      if (m.index > lastIdx) parts.push(escapeHtml(source.slice(lastIdx, m.index)));
+      var transcludePath = m[1];
+      var injectPath = m[2];
+      if (transcludePath) {
+        // ── TRANSCLUSION: pull the referenced narrative inline ──
+        if (depth >= MAX_TRANSCLUDE_DEPTH) {
+          parts.push('<span class="injection missing" title="max transclusion depth">' +
+            '&gt; ' + escapeHtml(transcludePath) + ' (depth limit)</span>');
+        } else if (visited[transcludePath]) {
+          parts.push('<span class="injection missing" title="cycle in transclusion">' +
+            '&gt; ' + escapeHtml(transcludePath) + ' (cycle)</span>');
+        } else {
+          var subSource = window.officeSpace ? window.officeSpace.get(transcludePath) : undefined;
+          if (typeof subSource !== 'string') {
+            var transcludeLabel = transcludePath.split('.').slice(-2, -1)[0] || transcludePath;
+            parts.push('<span class="injection missing" title="' + escapeHtml(transcludePath) + ' — narrative not yet present">' +
+              'included narrative «' + escapeHtml(transcludeLabel) + '» (missing)</span>');
+          } else {
+            visited[transcludePath] = true;
+            parts.push(
+              '<div class="transcluded" data-source-path="' + escapeHtml(transcludePath) + '">' +
+                '<div class="transcluded-label">▼ included from ' + escapeHtml(transcludePath) + '</div>' +
+                renderInjections(subSource, visited, depth + 1) +
+              '</div>',
+            );
+            visited[transcludePath] = false;
+          }
+        }
+      } else {
+        // ── VALUE INJECTION ──
+        var path = injectPath;
+        var kind = m[3] || KIND_DEFAULT;
+        var val = window.officeSpace ? window.officeSpace.get(path) : undefined;
+        if (val !== undefined) {
+          parts.push('<span class="injection resolved" title="' + escapeHtml(path) + ' : ' + escapeHtml(kind) + '">' +
+            escapeHtml(formatInjectionValue(val)) + '</span>');
+        } else {
+          var label = path.split('.').pop();
+          parts.push('<span class="injection missing" title="' + escapeHtml(path) + ' (needs ' + escapeHtml(kind) + ')">' +
+            escapeHtml(label) + '</span>');
+        }
+      }
+      lastIdx = COMBINED_RE.lastIndex;
+    }
+    if (lastIdx < source.length) parts.push(escapeHtml(source.slice(lastIdx)));
+    return parts.join('');
+  }
+
+  // Walk transcluded narratives transitively to surface ALL the pills
+  // a render would touch, so we can declareType on them too. This
+  // keeps the substrate's gap surface accurate even for inputs that
+  // only exist in transcluded children.
+  function collectAllInjections(source, visited, depth) {
+    visited = visited || Object.create(null);
+    depth = depth || 0;
+    var found = parseInjections(source);
+    if (depth >= MAX_TRANSCLUDE_DEPTH) return found;
+    TRANSCLUDE_RE.lastIndex = 0;
+    var m;
+    while ((m = TRANSCLUDE_RE.exec(source)) !== null) {
+      var p = m[1];
+      if (visited[p]) continue;
+      var sub = window.officeSpace ? window.officeSpace.get(p) : undefined;
+      if (typeof sub !== 'string') continue;
+      visited[p] = true;
+      found = found.concat(collectAllInjections(sub, visited, depth + 1));
+      visited[p] = false;
+    }
+    return found;
+  }
+  function refreshPreview() {
+    var preview = document.getElementById('editor-preview');
+    if (!preview) return;
+    if (!selectedFile) {
+      preview.innerHTML = '<div class="preview-empty">(no file selected)</div>';
+      return;
+    }
+    var raw = editorEl.value || '';
+    // Strip frontmatter — the renderer never shows metadata. Body is
+    // what gets rendered (with injections + transclusion); meta lives
+    // at files.{name}.meta.* in the substrate where consumers read it
+    // without re-parsing the body.
+    var fm = extractFrontmatter(raw);
+    var metaBadge = '';
+    var metaKeys = Object.keys(fm.meta);
+    if (metaKeys.length > 0) {
+      metaBadge = '<div class="meta-badge" title="frontmatter present (hidden from render): ' +
+        escapeHtml(metaKeys.join(', ')) +
+        '">meta: ' + escapeHtml(metaKeys.length === 1 ? metaKeys[0] : metaKeys.length + ' keys') +
+        '</div>';
+    }
+    // Prepend transcluded parent (structural fork) — fork's saved
+    // content is just the additions; the parent it forked from is
+    // referenced via files.{fork}.parent. Render the chain ahead of
+    // the fork's own source so the user sees the composed narrative.
+    var parentChain = renderParentChain(selectedFile, Object.create(null), 0);
+    preview.innerHTML =
+      metaBadge +
+      parentChain +
+      renderInjections(fm.body);
+  }
+
+  function renderParentChain(fileId, visited, depth) {
+    if (depth >= MAX_TRANSCLUDE_DEPTH) return '';
+    if (visited[fileId]) {
+      return '<div class="transcluded">' +
+        '<div class="transcluded-label">⚠ cycle: ' + escapeHtml(fileId) + '</div>' +
+        '</div>';
+    }
+    visited[fileId] = true;
+    var parentPath = window.officeSpace.get('files.' + fileId + '.parent');
+    if (typeof parentPath !== 'string') return '';
+    // parentPath looks like 'files.{parent}.content' — derive parent fileId.
+    var m = parentPath.match(/^files\.([a-zA-Z_][\w.]*)\.content$/);
+    if (!m) return '';
+    var parentFileId = m[1];
+    var parentSource = window.officeSpace.get(parentPath);
+    if (typeof parentSource !== 'string') {
+      return '<div class="transcluded">' +
+        '<div class="transcluded-label">▼ forked from ' + escapeHtml(parentFileId) + ' (parent missing)</div>' +
+        '</div>';
+    }
+    // Recurse: parent might itself be a fork.
+    var grandparentChain = renderParentChain(parentFileId, visited, depth + 1);
+    // Strip frontmatter from the parent's source too — never render meta.
+    var parentBody = extractFrontmatter(parentSource).body;
+    return '<div class="transcluded" data-source-path="' + escapeHtml(parentPath) + '">' +
+      '<div class="transcluded-label">▼ forked from ' + escapeHtml(parentFileId) + '</div>' +
+      grandparentChain +
+      renderInjections(parentBody, visited, depth + 1) +
+    '</div>';
+  }
+
+  function pullSelectedFileContent(forceOverwrite) {
+    if (!selectedFile) { refreshPreview(); return; }
+    var v = window.officeSpace.get(contentPath(selectedFile));
+    var remote = (typeof v === 'string') ? v : '';
+    if (remote !== remoteLatest || forceOverwrite) {
+      remoteLatest = remote;
+      // Only overwrite the textarea if the editor isn't focused OR
+      // the remote value matches our last uplink OR the caller asked
+      // us to force (initial selection). This is the "don't fight
+      // the user" rule — character-level CRDT is a separate design.
+      var focused = (document.activeElement === editorEl);
+      if (!focused || remote === localLatest || forceOverwrite) {
+        editorEl.value = remote;
+        localLatest = remote;
+      }
+    }
+    // Always refresh the preview — even when the source didn't change,
+    // injection values may have updated via cascade events from
+    // mounts elsewhere in the workspace.
+    refreshPreview();
+  }
+
+  function pushEdit() {
+    if (!window.officeSpace.status.connected) return;
+    if (!selectedFile) return;
+    var val = editorEl.value;
+    if (val === localLatest) return;
+    localLatest = val;
+    try {
+      window.officeSpace.mount(
+        contentPath(selectedFile) + ' = "' + escapeForFt(val) + '"',
+        { mutable: true },
+      );
+      // Extract metadata + body from the raw source. Body's
+      // injections drive schema declaration for backward inference;
+      // metadata is mounted as type-state so the substrate / agent /
+      // peers can see "this document declares scope=X, parser=Y, ..."
+      // without re-parsing the body themselves.
+      var fm = extractFrontmatter(val);
+      ensureInjectionSchemas(collectAllInjections(fm.body));
+      mountFrontmatterMeta(selectedFile, fm.meta);
+      saveStateEl.textContent = 'saved @ ' + new Date().toLocaleTimeString();
+    } catch (e) {
+      saveStateEl.textContent = 'send error: ' + (e && e.message ? e.message : e);
+    }
+  }
+
+  // Mount each frontmatter key:value at files.{name}.meta.{key}.
+  // Prior keys absent from this update are CLEARED (delete) so
+  // removing a key from the source actually removes it from the
+  // substrate — keeps meta and source consistent.
+  function mountFrontmatterMeta(fileId, meta) {
+    var basePath = 'files.' + fileId + '.meta';
+    var existing = window.officeSpace.keys(basePath) || [];
+    var lines = [];
+    var seen = {};
+    for (var key in meta) {
+      if (!Object.prototype.hasOwnProperty.call(meta, key)) continue;
+      var v = meta[key];
+      seen[key] = true;
+      // Keep values as strings — frontmatter is text. Numeric/typed
+      // coercion can come from the consumer's schema, not the parser.
+      lines.push(basePath + '.' + key + ' = "' + escapeForFt(v) + '"');
+    }
+    // Clear keys that were present but are now gone.
+    for (var i = 0; i < existing.length; i++) {
+      if (!seen[existing[i]]) {
+        // (No batch delete in the mount text format yet; the meta
+        // path will simply hold a stale value until overwritten.
+        // Acceptable v1 — recording the limitation here.)
+      }
+    }
+    if (lines.length > 0) {
+      window.officeSpace.mount(lines.join('\n'), { mutable: true });
+    }
+  }
+
+  function newFile() {
+    createFile(/*initialContent*/ '');
+  }
+
+  // Auto-generate a fork name that doesn't collide with existing
+  // files. parent_fork, parent_fork_2, parent_fork_3, etc. Avoids
+  // the synchronous prompt() that blocks playwright dialogs.
+  function nextForkName(parent) {
+    var existing = window.officeSpace.keys('files') || [];
+    var existingSet = {};
+    for (var i = 0; i < existing.length; i++) existingSet[existing[i]] = true;
+    var base = parent + '_fork';
+    if (!existingSet[base]) return base;
+    for (var n = 2; n < 1000; n++) {
+      var candidate = base + '_' + n;
+      if (!existingSet[candidate]) return candidate;
+    }
+    return base + '_' + Date.now();
+  }
+
+  function forkFile() {
+    if (!selectedFile) {
+      showError('open a file before forking');
+      return;
+    }
+    try {
+      var parentContentPath = contentPath(selectedFile);
+      var forkName = nextForkName(selectedFile);
+      // The fork structurally references its parent via a sibling
+      // mount at files.{fork}.parent. The renderer reads this and
+      // prepends the parent's content (recursively) ahead of the
+      // fork's own. NO {{>...}} text-marker required — keeps the
+      // saved content clean (just the user's additions) and avoids
+      // round-tripping a transclusion marker through the ft text
+      // mount path (which had parser issues with inline {{).
+      createFileNamed(forkName, '');
+      window.officeSpace.mount(
+        'files.' + forkName + '.parent = "' + escapeForFt(parentContentPath) + '"',
+        { mutable: true },
+      );
+      refreshPreview();
+    } catch (e) {
+      showError('fork failed: ' + (e && e.message ? e.message : e));
+    }
+  }
+
+  function newFile() {
+    var name = prompt('File name (no spaces, dotted path segments allowed):', 'notes');
+    if (!name) return;
+    createFileNamed(String(name).trim(), '');
+  }
+
+  function createFileNamed(name, initialContent) {
+    if (!name) return;
+    if (!/^[a-zA-Z_][\w.]*$/.test(name)) {
+      showError('invalid file name (use letters, digits, _ or . ; must start with a letter)');
+      return;
+    }
+    showError('');
+    try {
+      // Mount empty first so the file appears in the list, then
+      // populate with the (potentially non-empty) initial content via
+      // the same mutable mount the editor uses.
+      window.officeSpace.mount(
+        'files.' + name + '.content = ""',
+        { mutable: true },
+      );
+      if (initialContent) {
+        window.officeSpace.mount(
+          'files.' + name + '.content = "' + escapeForFt(initialContent) + '"',
+          { mutable: true },
+        );
+      }
+      selectFile(name);
+      renderFileList();
+    } catch (e) {
+      showError('new file failed: ' + (e && e.message ? e.message : e));
+    }
+  }
+
+  // ─── Plugin host registration ───────────────────────────────
+  // Each panel is a render fn registered against the `render` id
+  // mounted at _panels.{id}.render in panels.ts. The shell (below)
+  // iterates window.officeSpace.panels.list() on every event and
+  // dispatches each panel's registered render fn.
+  //
+  // Render fns are responsible for finding their own slot
+  // elements. The static layout in this file already provides the
+  // slots for the four stdlib panels; future panels (D2/D3/D4)
+  // can either reuse a static slot or create new DOM under the
+  // shell-provided position container.
+  function registerStdlibPanels() {
+    var panels = window.officeSpace && window.officeSpace.panels;
+    if (!panels) return;
+    panels.register('feed-panel', function () { renderFeed(); });
+    panels.register('files-panel', function () { renderFileList(); });
+    panels.register('editor-panel', function () { pullSelectedFileContent(false); });
+    panels.register('tools-panel', function () { renderToolsDoc(); });
+  }
+
+  function rerenderAll() {
+    var panels = window.officeSpace && window.officeSpace.panels;
+    if (!panels) return;
+    var list = panels.list();
+    for (var i = 0; i < list.length; i++) {
+      var p = list[i];
+      var fn = panels.resolve(p.render);
+      if (!fn) continue;
+      try {
+        // Slot resolution: each existing render fn finds its own
+        // static slot. A future shell can pass a dynamically-created
+        // div by position; the ctx already carries doc/get/keys/mount
+        // so panels don't need to reach into officeSpace directly.
+        fn(null, makePanelCtx(p));
+      } catch (e) {
+        showError('panel ' + p.id + ' render failed: ' + (e && e.message ? e.message : e));
+      }
+    }
+  }
+
+  function makePanelCtx(panel) {
+    return {
+      panel: panel,
+      doc: function () {
+        if (!panel.reader) return '';
+        return window.officeSpace.render(panel.reader) || '';
+      },
+      get: function (path) { return window.officeSpace.get(path); },
+      keys: function (prefix) { return window.officeSpace.keys(prefix); },
+      gaps: function () { return window.officeSpace.gaps(); },
+      mount: function (text, opts) { return window.officeSpace.mount(text, opts); },
+    };
+  }
+
+  // ─── Connection flow ────────────────────────────────────────
+  async function connect() {
+    showError('');
+    var user = userEl.value.trim() || 'anon';
+    var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    var serverUrl = proto + '//' + location.host;
+    setStatus('connecting…', '');
+    connectBtn.disabled = true;
+    userEl.disabled = true;
+
+    window.officeSpace.on(function (ev) {
+      if (ev.kind === 'connected') setStatus('connected ' + user + ' @ ' + serverUrl, 'ok');
+      else if (ev.kind === 'disconnected') setStatus('disconnected', 'bad');
+      else if (ev.kind === 'error') showError(String(ev.message));
+      else if (ev.kind === 'render' || ev.kind === 'delta' || ev.kind === 'changes') rerenderAll();
+    });
+
+    try {
+      await window.officeSpace.boot({ user: user, serverUrl: serverUrl });
+      // Panels mount their config during boot (see env/browser.ts
+      // calling registerStdlibPanels). Render fns must be registered
+      // BEFORE the first render dispatch; do it here, post-boot.
+      registerStdlibPanels();
+      rerenderAll();
+    } catch (e) {
+      showError('boot failed: ' + (e && e.message ? e.message : String(e)));
+      setStatus('boot failed', 'bad');
+      connectBtn.disabled = false;
+      userEl.disabled = false;
+    }
+  }
+
+  // ─── Wiring ─────────────────────────────────────────────────
+  connectBtn.addEventListener('click', connect);
+  editorEl.addEventListener('input', function () {
+    // Live preview update on every keystroke — narrative IS the
+    // function over its references; the rendered form is its
+    // application against current state. Also debounce-push the
+    // source so other clients see it.
+    refreshPreview();
+    if (pushDebounce) clearTimeout(pushDebounce);
+    pushDebounce = setTimeout(pushEdit, 150);
+  });
+  newFileBtn.addEventListener('click', newFile);
+  var forkBtn = document.getElementById('fork-file');
+  if (forkBtn) forkBtn.addEventListener('click', forkFile);
+  // Delegated click handler: any element with data-expand or
+  // data-collapse toggles the named token's state and re-renders.
+  // Same convention as hoist's expandTokens — UI tracks which tokens
+  // the user has chosen to expand, re-render uses the set.
+  feedListEl.addEventListener('click', function (e) {
+    var t = e.target;
+    while (t && t !== feedListEl) {
+      if (t.getAttribute) {
+        var ex = t.getAttribute('data-expand');
+        if (ex) { expandedTokens[ex] = true; renderFeed(); return; }
+        var co = t.getAttribute('data-collapse');
+        if (co) { delete expandedTokens[co]; renderFeed(); return; }
+      }
+      t = t.parentNode;
+    }
+  });
+})();
+</script>
+</body>
+</html>

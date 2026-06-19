@@ -1,0 +1,343 @@
+{
+  "version": "1.0",
+  "connectorId": "bitbucket",
+  "apis": [
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "bitbucket.fetch_commit_diff",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.bitbucket.org/2.0/repositories/{{const.bitbucket.workspace}}/{{const.bitbucket.repo}}/diff/{{arg.commit}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.bitbucket.authHeader" },
+          "commit": {
+            "$arg": "commit",
+            "description": "The commit hash or revision to fetch the diff for",
+            "type": "string",
+            "required": true
+          }
+        },
+        "description": "Fetch the diff for a specific commit"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "bitbucket.fetch_commit_patch",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.bitbucket.org/2.0/repositories/{{const.bitbucket.workspace}}/{{const.bitbucket.repo}}/patch/{{arg.commit}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.bitbucket.authHeader" },
+          "commit": {
+            "$arg": "commit",
+            "description": "The commit hash or revision to fetch the patch for",
+            "type": "string",
+            "required": true
+          }
+        },
+        "description": "Fetch the patch file for a specific commit"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "bitbucket.fetch_commits",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.bitbucket.org/2.0/repositories/{{const.bitbucket.workspace}}/{{const.bitbucket.repo}}/commits/{{arg.include}}?exclude={{arg.exclude}}&pagelen={{arg.pagelen}}&page={{arg.page}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.bitbucket.authHeader" },
+          "include": {
+            "$arg": "include",
+            "description": "Branch name or commit hash to include commits from",
+            "type": "string",
+            "required": true
+          },
+          "exclude": {
+            "$arg": "exclude",
+            "description": "Branch name or commit hash to exclude commits from",
+            "type": "string",
+            "required": false
+          },
+          "pagelen": {
+            "$arg": "pagelen",
+            "description": "Number of results per page",
+            "type": "number",
+            "required": false,
+            "default": 30
+          },
+          "page": {
+            "$arg": "page",
+            "description": "Page number for pagination",
+            "type": "number",
+            "required": false,
+            "default": 1
+          }
+        },
+        "description": "List commits on a branch with optional exclusion filter"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "bitbucket.fetch_pull_requests",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.bitbucket.org/2.0/repositories/{{const.bitbucket.workspace}}/{{const.bitbucket.repo}}/pullrequests?state={{arg.state}}&pagelen={{arg.pagelen}}&page={{arg.page}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.bitbucket.authHeader" },
+          "state": {
+            "$arg": "state",
+            "description": "Filter by state: 'OPEN', 'MERGED', 'DECLINED', or 'SUPERSEDED'",
+            "type": "string",
+            "required": false,
+            "default": "OPEN"
+          },
+          "pagelen": {
+            "$arg": "pagelen",
+            "description": "Number of results per page",
+            "type": "number",
+            "required": false,
+            "default": 30
+          },
+          "page": {
+            "$arg": "page",
+            "description": "Page number for pagination",
+            "type": "number",
+            "required": false,
+            "default": 1
+          }
+        },
+        "description": "List pull requests in the repository"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "bitbucket.fetch_pull_request",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.bitbucket.org/2.0/repositories/{{const.bitbucket.workspace}}/{{const.bitbucket.repo}}/pullrequests/{{arg.pr_id}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.bitbucket.authHeader" },
+          "pr_id": {
+            "$arg": "pr_id",
+            "description": "The pull request ID number",
+            "type": "number",
+            "required": true
+          }
+        },
+        "description": "Fetch details of a specific pull request by ID"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "bitbucket.fetch_pull_request_diff",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.bitbucket.org/2.0/repositories/{{const.bitbucket.workspace}}/{{const.bitbucket.repo}}/pullrequests/{{arg.pr_id}}/diff",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.bitbucket.authHeader" },
+          "pr_id": {
+            "$arg": "pr_id",
+            "description": "The pull request ID number",
+            "type": "number",
+            "required": true
+          }
+        },
+        "description": "Fetch the diff of a pull request"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "bitbucket.fetch_pull_request_files",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.bitbucket.org/2.0/repositories/{{const.bitbucket.workspace}}/{{const.bitbucket.repo}}/pullrequests/{{arg.pr_id}}/diffstat?pagelen={{arg.pagelen}}&page={{arg.page}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.bitbucket.authHeader" },
+          "pr_id": {
+            "$arg": "pr_id",
+            "description": "The pull request ID number",
+            "type": "number",
+            "required": true
+          },
+          "pagelen": {
+            "$arg": "pagelen",
+            "description": "Number of results per page",
+            "type": "number",
+            "required": false,
+            "default": 30
+          },
+          "page": {
+            "$arg": "page",
+            "description": "Page number for pagination",
+            "type": "number",
+            "required": false,
+            "default": 1
+          }
+        },
+        "description": "List files changed in a pull request with diffstat"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "bitbucket.fetch_branches",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.bitbucket.org/2.0/repositories/{{const.bitbucket.workspace}}/{{const.bitbucket.repo}}/refs/branches?pagelen={{arg.pagelen}}&page={{arg.page}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.bitbucket.authHeader" },
+          "pagelen": {
+            "$arg": "pagelen",
+            "description": "Number of results per page",
+            "type": "number",
+            "required": false,
+            "default": 30
+          },
+          "page": {
+            "$arg": "page",
+            "description": "Page number for pagination",
+            "type": "number",
+            "required": false,
+            "default": 1
+          }
+        },
+        "description": "List all branches in the repository"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "bitbucket.fetch_tags",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.bitbucket.org/2.0/repositories/{{const.bitbucket.workspace}}/{{const.bitbucket.repo}}/refs/tags?pagelen={{arg.pagelen}}&page={{arg.page}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.bitbucket.authHeader" },
+          "pagelen": {
+            "$arg": "pagelen",
+            "description": "Number of results per page",
+            "type": "number",
+            "required": false,
+            "default": 30
+          },
+          "page": {
+            "$arg": "page",
+            "description": "Page number for pagination",
+            "type": "number",
+            "required": false,
+            "default": 1
+          }
+        },
+        "description": "List all tags in the repository"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "bitbucket.fetch_file_contents",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.bitbucket.org/2.0/repositories/{{const.bitbucket.workspace}}/{{const.bitbucket.repo}}/src/{{arg.rev}}/{{arg.path}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.bitbucket.authHeader" },
+          "rev": {
+            "$arg": "rev",
+            "description": "Branch name, tag, or commit hash",
+            "type": "string",
+            "required": true
+          },
+          "path": {
+            "$arg": "path",
+            "description": "File path in the repository",
+            "type": "string",
+            "required": true
+          }
+        },
+        "description": "Fetch the contents of a file at a specific path and revision"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "bitbucket.list_repositories",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.bitbucket.org/2.0/repositories/{{const.bitbucket.workspace}}?pagelen={{arg.pagelen}}&page={{arg.page}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.bitbucket.authHeader" },
+          "pagelen": {
+            "$arg": "pagelen",
+            "description": "Number of results per page",
+            "type": "number",
+            "required": false,
+            "default": 30
+          },
+          "page": {
+            "$arg": "page",
+            "description": "Page number for pagination",
+            "type": "number",
+            "required": false,
+            "default": 1
+          }
+        },
+        "description": "List all repositories in the workspace"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "bitbucket.get_repository",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.bitbucket.org/2.0/repositories/{{const.bitbucket.workspace}}/{{const.bitbucket.repo}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.bitbucket.authHeader" }
+        },
+        "description": "Get details of the configured repository"
+      }
+    }
+  ]
+}

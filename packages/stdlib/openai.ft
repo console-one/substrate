@@ -1,0 +1,21 @@
+-- OpenAI Chat Completion
+-- Provides LLM inference via OpenAI's chat completions API.
+--
+-- Install: import openai from './openai.ft'
+-- Requires: API key validated by validateOpenAIKey
+
+-- The chat completion function
+openai.chat = (messages: [{ role: string, content: string }]) -> { content: string, tokens_used: number } ~lognormal(mu = 7.5, sigma = 0.6)
+
+-- Binding: endpoint and auth
+openai.chat.endpoint = "https://api.openai.com/v1/chat/completions"
+openai.chat.auth = ref(id.keys.openai)
+
+-- Default constraints (narrowable per-instance)
+openai.chat.limits.tokens_per_day = 1000000
+openai.chat.limits.requests_per_minute = 3500
+
+-- The API key gap.
+-- This must be filled before the capability can be invoked.
+-- The key must be validated by validateOpenAIKey (provenance enforced).
+-- [[ OpenAI API key : sk-... from https://platform.openai.com/api-keys ]]

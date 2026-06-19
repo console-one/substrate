@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "strict": false,
+    "moduleResolution": "bundler",
+    "baseUrl": ".",
+    "paths": {
+      "@ft/core": ["../../packages/core/src/index.ts"],
+      "@ft/core/dsl": ["../../packages/core/src/dsl/index.ts"],
+      "@ft/core/runtime": ["../../packages/core/src/runtime/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts"]
+}

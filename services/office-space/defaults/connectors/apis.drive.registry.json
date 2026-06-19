@@ -1,0 +1,452 @@
+{
+  "version": "1.0",
+  "connectorId": "drive",
+  "apis": [
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "drive.list_files",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://www.googleapis.com/drive/v3/files?q={{arg.q}}&pageSize={{arg.pageSize}}&pageToken={{arg.pageToken}}&fields={{arg.fields}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.gdrive.authHeader" },
+          "q": {
+            "$arg": "q",
+            "description": "Query string for filtering files (e.g., 'name contains \"report\"')",
+            "type": "string",
+            "required": false
+          },
+          "pageSize": {
+            "$arg": "pageSize",
+            "description": "Maximum number of files to return per page (max 1000)",
+            "type": "number",
+            "required": false,
+            "default": 100
+          },
+          "pageToken": {
+            "$arg": "pageToken",
+            "description": "Token for retrieving the next page of results",
+            "type": "string",
+            "required": false
+          },
+          "fields": {
+            "$arg": "fields",
+            "description": "Comma-separated list of fields to include in response",
+            "type": "string",
+            "required": false,
+            "default": "*"
+          }
+        },
+        "description": "List files with optional search query filter"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "drive.list_folder",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://www.googleapis.com/drive/v3/files?q=%27{{arg.folderId}}%27+in+parents&pageSize={{arg.pageSize}}&pageToken={{arg.pageToken}}&fields={{arg.fields}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.gdrive.authHeader" },
+          "folderId": {
+            "$arg": "folderId",
+            "description": "The folder ID to list files from",
+            "type": "string",
+            "required": true
+          },
+          "pageSize": {
+            "$arg": "pageSize",
+            "description": "Maximum number of files to return per page (max 1000)",
+            "type": "number",
+            "required": false,
+            "default": 100
+          },
+          "pageToken": {
+            "$arg": "pageToken",
+            "description": "Token for retrieving the next page of results",
+            "type": "string",
+            "required": false
+          },
+          "fields": {
+            "$arg": "fields",
+            "description": "Comma-separated list of fields to include in response",
+            "type": "string",
+            "required": false,
+            "default": "*"
+          }
+        },
+        "description": "List files in a specific folder"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "drive.get_file",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://www.googleapis.com/drive/v3/files/{{arg.fileId}}?fields={{arg.fields}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.gdrive.authHeader" },
+          "fileId": {
+            "$arg": "fileId",
+            "description": "The file ID to retrieve",
+            "type": "string",
+            "required": true
+          },
+          "fields": {
+            "$arg": "fields",
+            "description": "Comma-separated list of fields to include in response",
+            "type": "string",
+            "required": false,
+            "default": "*"
+          }
+        },
+        "description": "Get metadata for a specific file"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "drive.download_file",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://www.googleapis.com/drive/v3/files/{{arg.fileId}}?alt=media",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.gdrive.authHeader" },
+          "fileId": {
+            "$arg": "fileId",
+            "description": "The file ID to download",
+            "type": "string",
+            "required": true
+          }
+        },
+        "description": "Download the binary content of a file"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "drive.export_google_doc",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://www.googleapis.com/drive/v3/files/{{arg.fileId}}/export?mimeType={{arg.mimeType}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.gdrive.authHeader" },
+          "fileId": {
+            "$arg": "fileId",
+            "description": "The Google Workspace file ID to export",
+            "type": "string",
+            "required": true
+          },
+          "mimeType": {
+            "$arg": "mimeType",
+            "description": "The MIME type to export to (e.g., 'application/pdf', 'text/plain')",
+            "type": "string",
+            "required": true
+          }
+        },
+        "description": "Export a Google Workspace document to a different format"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "drive.list_revisions",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://www.googleapis.com/drive/v3/files/{{arg.fileId}}/revisions?fields={{arg.fields}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.gdrive.authHeader" },
+          "fileId": {
+            "$arg": "fileId",
+            "description": "The file ID to list revisions for",
+            "type": "string",
+            "required": true
+          },
+          "fields": {
+            "$arg": "fields",
+            "description": "Comma-separated list of fields to include in response",
+            "type": "string",
+            "required": false,
+            "default": "*"
+          }
+        },
+        "description": "List all revisions of a file"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "drive.get_revision",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://www.googleapis.com/drive/v3/files/{{arg.fileId}}/revisions/{{arg.revisionId}}?fields={{arg.fields}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.gdrive.authHeader" },
+          "fileId": {
+            "$arg": "fileId",
+            "description": "The file ID",
+            "type": "string",
+            "required": true
+          },
+          "revisionId": {
+            "$arg": "revisionId",
+            "description": "The revision ID to retrieve",
+            "type": "string",
+            "required": true
+          },
+          "fields": {
+            "$arg": "fields",
+            "description": "Comma-separated list of fields to include in response",
+            "type": "string",
+            "required": false,
+            "default": "*"
+          }
+        },
+        "description": "Get metadata for a specific file revision"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "drive.start_page_token",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://www.googleapis.com/drive/v3/changes/startPageToken",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.gdrive.authHeader" }
+        },
+        "description": "Get the starting page token for listing future changes"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "drive.changes_list",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://www.googleapis.com/drive/v3/changes?pageToken={{arg.pageToken}}&pageSize={{arg.pageSize}}&fields={{arg.fields}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.gdrive.authHeader" },
+          "pageToken": {
+            "$arg": "pageToken",
+            "description": "Token for the page of changes to retrieve",
+            "type": "string",
+            "required": true
+          },
+          "pageSize": {
+            "$arg": "pageSize",
+            "description": "Maximum number of changes to return per page (max 1000)",
+            "type": "number",
+            "required": false,
+            "default": 100
+          },
+          "fields": {
+            "$arg": "fields",
+            "description": "Comma-separated list of fields to include in response",
+            "type": "string",
+            "required": false,
+            "default": "*"
+          }
+        },
+        "description": "List changes to files and shared drives"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "drive.search_recent",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://www.googleapis.com/drive/v3/files?q={{arg.q}}&orderBy=modifiedTime desc&pageSize={{arg.pageSize}}&fields={{arg.fields}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.gdrive.authHeader" },
+          "q": {
+            "$arg": "q",
+            "description": "Query string for filtering files (e.g., 'name contains \"report\"')",
+            "type": "string",
+            "required": false
+          },
+          "pageSize": {
+            "$arg": "pageSize",
+            "description": "Maximum number of files to return per page (max 1000)",
+            "type": "number",
+            "required": false,
+            "default": 100
+          },
+          "fields": {
+            "$arg": "fields",
+            "description": "Comma-separated list of fields to include in response",
+            "type": "string",
+            "required": false,
+            "default": "*"
+          }
+        },
+        "description": "Search files ordered by most recently modified"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "drive.list_files_all_drives",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://www.googleapis.com/drive/v3/files?q={{arg.q}}&pageSize={{arg.pageSize}}&pageToken={{arg.pageToken}}&supportsAllDrives=true&includeItemsFromAllDrives=true&fields={{arg.fields}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.gdrive.authHeader" },
+          "q": {
+            "$arg": "q",
+            "description": "Query string for filtering files (e.g., 'name contains \"report\"')",
+            "type": "string",
+            "required": false
+          },
+          "pageSize": {
+            "$arg": "pageSize",
+            "description": "Maximum number of files to return per page (max 1000)",
+            "type": "number",
+            "required": false,
+            "default": 100
+          },
+          "pageToken": {
+            "$arg": "pageToken",
+            "description": "Token for retrieving the next page of results",
+            "type": "string",
+            "required": false
+          },
+          "fields": {
+            "$arg": "fields",
+            "description": "Comma-separated list of fields to include in response",
+            "type": "string",
+            "required": false,
+            "default": "*"
+          }
+        },
+        "description": "List files including those from all shared drives"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "drive.list_shared_drives",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://www.googleapis.com/drive/v3/drives?pageSize={{arg.pageSize}}&pageToken={{arg.pageToken}}&fields={{arg.fields}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.gdrive.authHeader" },
+          "pageSize": {
+            "$arg": "pageSize",
+            "description": "Maximum number of drives to return per page (max 100)",
+            "type": "number",
+            "required": false,
+            "default": 10
+          },
+          "pageToken": {
+            "$arg": "pageToken",
+            "description": "Token for retrieving the next page of results",
+            "type": "string",
+            "required": false
+          },
+          "fields": {
+            "$arg": "fields",
+            "description": "Comma-separated list of fields to include in response",
+            "type": "string",
+            "required": false,
+            "default": "*"
+          }
+        },
+        "description": "List all shared drives accessible to the user"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "drive.comments_list",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://www.googleapis.com/drive/v3/files/{{arg.fileId}}/comments?pageSize={{arg.pageSize}}&pageToken={{arg.pageToken}}&fields={{arg.fields}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.gdrive.authHeader" },
+          "fileId": {
+            "$arg": "fileId",
+            "description": "The file ID to list comments for",
+            "type": "string",
+            "required": true
+          },
+          "pageSize": {
+            "$arg": "pageSize",
+            "description": "Maximum number of comments to return per page (max 100)",
+            "type": "number",
+            "required": false,
+            "default": 20
+          },
+          "pageToken": {
+            "$arg": "pageToken",
+            "description": "Token for retrieving the next page of results",
+            "type": "string",
+            "required": false
+          },
+          "fields": {
+            "$arg": "fields",
+            "description": "Comma-separated list of fields to include in response",
+            "type": "string",
+            "required": false,
+            "default": "*"
+          }
+        },
+        "description": "List all comments on a file"
+      }
+    }
+  ]
+}

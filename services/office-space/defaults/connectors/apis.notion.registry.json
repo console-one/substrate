@@ -1,0 +1,332 @@
+{
+  "version": "1.0",
+  "connectorId": "notion",
+  "apis": [
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "notion.search",
+      "values": {
+        "method": "POST",
+        "mode": "rest:post",
+        "endpoint": "https://api.notion.com/v1/search",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Notion-Version": "2025-09-03",
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.notion.authHeader" },
+          "query": {
+            "$arg": "query",
+            "description": "Text query to search for in page titles",
+            "type": "string",
+            "required": false
+          },
+          "filter": {
+            "$arg": "filter",
+            "description": "Filter object to limit results by type (e.g., {\"property\": \"object\", \"value\": \"page\"})",
+            "type": "object",
+            "required": false
+          },
+          "sort": {
+            "$arg": "sort",
+            "description": "Sort object to order results (e.g., {\"direction\": \"ascending\", \"timestamp\": \"last_edited_time\"})",
+            "type": "object",
+            "required": false
+          },
+          "start_cursor": {
+            "$arg": "start_cursor",
+            "description": "Cursor for pagination to retrieve the next page of results",
+            "type": "string",
+            "required": false
+          },
+          "page_size": {
+            "$arg": "page_size",
+            "description": "Number of results to return per page (max 100)",
+            "type": "number",
+            "required": false,
+            "default": 100
+          }
+        },
+        "bodyTemplate": "{\n  \"query\": {{arg.query}},\n  \"filter\": {{arg.filter}},\n  \"sort\": {{arg.sort}},\n  \"start_cursor\": {{arg.start_cursor}},\n  \"page_size\": {{arg.page_size}}\n}",
+        "description": "Search for pages and databases in Notion workspace"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "notion.retrieve_database",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.notion.com/v1/databases/{{arg.database_id}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Notion-Version": "2025-09-03",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.notion.authHeader" },
+          "database_id": {
+            "$arg": "database_id",
+            "description": "The database identifier (UUID)",
+            "type": "string",
+            "required": true
+          }
+        },
+        "description": "Retrieve metadata for a specific Notion database"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "notion.retrieve_data_source",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.notion.com/v1/data_sources/{{arg.data_source_id}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Notion-Version": "2025-09-03",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.notion.authHeader" },
+          "data_source_id": {
+            "$arg": "data_source_id",
+            "description": "The data source identifier (UUID)",
+            "type": "string",
+            "required": true
+          }
+        },
+        "description": "Retrieve metadata for a specific Notion data source"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "notion.query_data_source",
+      "values": {
+        "method": "POST",
+        "mode": "rest:post",
+        "endpoint": "https://api.notion.com/v1/data_sources/{{arg.data_source_id}}/query",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Notion-Version": "2025-09-03",
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.notion.authHeader" },
+          "data_source_id": {
+            "$arg": "data_source_id",
+            "description": "The data source identifier (UUID)",
+            "type": "string",
+            "required": true
+          },
+          "filter": {
+            "$arg": "filter",
+            "description": "Filter object to limit results",
+            "type": "object",
+            "required": false
+          },
+          "sorts": {
+            "$arg": "sorts",
+            "description": "Array of sort objects to order results",
+            "type": "array",
+            "required": false
+          },
+          "start_cursor": {
+            "$arg": "start_cursor",
+            "description": "Cursor for pagination to retrieve the next page of results",
+            "type": "string",
+            "required": false
+          },
+          "page_size": {
+            "$arg": "page_size",
+            "description": "Number of results to return per page (max 100)",
+            "type": "number",
+            "required": false,
+            "default": 100
+          }
+        },
+        "bodyTemplate": "{\n  \"filter\": {{arg.filter}},\n  \"sorts\": {{arg.sorts}},\n  \"start_cursor\": {{arg.start_cursor}},\n  \"page_size\": {{arg.page_size}}\n}",
+        "description": "Query a Notion data source with filters and sorting"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "notion.retrieve_page",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.notion.com/v1/pages/{{arg.page_id}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Notion-Version": "2025-09-03",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.notion.authHeader" },
+          "page_id": {
+            "$arg": "page_id",
+            "description": "The page identifier (UUID)",
+            "type": "string",
+            "required": true
+          }
+        },
+        "description": "Retrieve metadata and properties for a specific Notion page"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "notion.retrieve_page_property",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.notion.com/v1/pages/{{arg.page_id}}/properties/{{arg.property_id}}?start_cursor={{arg.start_cursor}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Notion-Version": "2025-09-03",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.notion.authHeader" },
+          "page_id": {
+            "$arg": "page_id",
+            "description": "The page identifier (UUID)",
+            "type": "string",
+            "required": true
+          },
+          "property_id": {
+            "$arg": "property_id",
+            "description": "The property identifier to retrieve",
+            "type": "string",
+            "required": true
+          },
+          "start_cursor": {
+            "$arg": "start_cursor",
+            "description": "Cursor for pagination to retrieve the next page of results",
+            "type": "string",
+            "required": false
+          }
+        },
+        "description": "Retrieve a specific property value from a Notion page"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "notion.list_comments",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.notion.com/v1/comments?block_id={{arg.block_id}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Notion-Version": "2025-09-03",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.notion.authHeader" },
+          "block_id": {
+            "$arg": "block_id",
+            "description": "The block identifier (UUID) to retrieve comments for",
+            "type": "string",
+            "required": true
+          }
+        },
+        "description": "List all comments on a specific block"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "notion.list_block_children",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.notion.com/v1/blocks/{{arg.block_id}}/children?page_size={{arg.page_size}}&start_cursor={{arg.start_cursor}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Notion-Version": "2025-09-03",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.notion.authHeader" },
+          "block_id": {
+            "$arg": "block_id",
+            "description": "The block or page identifier (UUID) to retrieve children for",
+            "type": "string",
+            "required": true
+          },
+          "page_size": {
+            "$arg": "page_size",
+            "description": "Number of blocks to return per page (max 100)",
+            "type": "number",
+            "required": false,
+            "default": 100
+          },
+          "start_cursor": {
+            "$arg": "start_cursor",
+            "description": "Cursor for pagination to retrieve the next page of results",
+            "type": "string",
+            "required": false
+          }
+        },
+        "description": "List all child blocks of a specific block or page"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "notion.list_users",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.notion.com/v1/users?page_size={{arg.page_size}}&start_cursor={{arg.start_cursor}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Notion-Version": "2025-09-03",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.notion.authHeader" },
+          "page_size": {
+            "$arg": "page_size",
+            "description": "Number of users to return per page (max 100)",
+            "type": "number",
+            "required": false,
+            "default": 100
+          },
+          "start_cursor": {
+            "$arg": "start_cursor",
+            "description": "Cursor for pagination to retrieve the next page of results",
+            "type": "string",
+            "required": false
+          }
+        },
+        "description": "List all users in the Notion workspace"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "notion.get_user",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.notion.com/v1/users/{{arg.user_id}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Notion-Version": "2025-09-03",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.notion.authHeader" },
+          "user_id": {
+            "$arg": "user_id",
+            "description": "The user identifier (UUID)",
+            "type": "string",
+            "required": true
+          }
+        },
+        "description": "Get details of a specific user by ID"
+      }
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+node_modules/
+dist/
+dist-web/
+*.tsbuildinfo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment
+.env
+.env.*
+
+# Coverage
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+contextgraph.db*
+*.db-shm
+*.db-wal

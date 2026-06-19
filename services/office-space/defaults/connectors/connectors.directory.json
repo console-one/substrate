@@ -1,0 +1,571 @@
+{
+  "version": "2025-01-01",
+  "connectors": [
+    {
+      "id": "github",
+      "displayName": "GitHub",
+      "usedBy": [
+        "github.fetch_commit_diffs",
+        "github.fetch_commits_by_date",
+        "github.fetch_pull_requests",
+        "github.fetch_pull_request",
+        "github.fetch_pull_request_files",
+        "github.fetch_contributors",
+        "github.fetch_branches",
+        "github.fetch_file_contents"
+      ],
+
+      "install": {
+        "fields": [
+          {
+            "id": "github.token",
+            "label": "GitHub Personal Access Token",
+            "description": "Token with repo read access.",
+            "type": "secret",
+            "required": true,
+            "constantKey": "github.token",
+            "placeholder": "ghp_..."
+          },
+          {
+            "id": "github.owner",
+            "label": "Default Owner (org or user)",
+            "description": "e.g. console-one",
+            "type": "string",
+            "required": true,
+            "constantKey": "github.owner",
+            "placeholder": "owner-name"
+          },
+          {
+            "id": "github.repo",
+            "label": "Default Repository (optional)",
+            "description": "e.g. lens-desktop. APIs can override.",
+            "type": "string",
+            "required": false,
+            "constantKey": "github.repo",
+            "placeholder": "repo-name"
+          }
+        ]
+      },
+
+      "bindings": [
+        {
+          "schematictype": { "typename": "binding" },
+          "id": "binding.github.authHeader",
+          "values": {
+            "expr": "concat('Bearer ', const.github.token)"
+          }
+        },
+        {
+          "schematictype": { "typename": "binding" },
+          "id": "binding.github.defaultOwner",
+          "values": {
+            "expr": "const.github.owner"
+          }
+        },
+        {
+          "schematictype": { "typename": "binding" },
+          "id": "binding.github.defaultRepo",
+          "values": {
+            "expr": "const.github.repo"
+          }
+        },
+        {
+          "schematictype": { "typename": "binding" },
+          "id": "binding.github.apiBase",
+          "values": {
+            "expr": "'https://api.github.com'"
+          }
+        }
+      ]
+    },
+
+    {
+      "id": "jira",
+      "displayName": "Jira",
+      "usedBy": [
+        "jira.search_issues",
+        "jira.get_issue",
+        "jira.get_issue_changelog",
+        "jira.list_projects",
+        "jira.get_project",
+        "jira.list_issue_comments",
+        "jira.users_assignable",
+        "jira.myself",
+        "jira.agile_list_boards",
+        "jira.agile_list_sprints",
+        "jira.agile_sprint_issues"
+      ],
+
+      "install": {
+        "fields": [
+          {
+            "id": "jira.baseUrl",
+            "label": "Jira Base URL",
+            "description": "e.g. your-org.atlassian.net (no https://).",
+            "type": "string",
+            "required": true,
+            "constantKey": "jira.baseUrl",
+            "placeholder": "your-org.atlassian.net"
+          },
+          {
+            "id": "jira.email",
+            "label": "Jira Account Email",
+            "description": "Used for Basic auth with API token.",
+            "type": "email",
+            "required": true,
+            "constantKey": "jira.email",
+            "placeholder": "you@company.com"
+          },
+          {
+            "id": "jira.apiToken",
+            "label": "Jira API Token",
+            "description": "Personal API token from Atlassian.",
+            "type": "secret",
+            "required": true,
+            "constantKey": "jira.apiToken",
+            "placeholder": "atlassian_api_token"
+          }
+        ]
+      },
+
+      "bindings": [
+        {
+          "schematictype": { "typename": "binding" },
+          "id": "binding.jira.basicAuth",
+          "values": {
+            "expr": "concat('Basic ', base64(concat(const.jira.email, ':', const.jira.apiToken)))"
+          }
+        },
+        {
+          "schematictype": { "typename": "binding" },
+          "id": "binding.jira.baseUrl",
+          "values": {
+            "expr": "concat('https://', const.jira.baseUrl)"
+          }
+        }
+      ]
+    },
+
+    {
+      "id": "fathom",
+      "displayName": "Fathom",
+      "usedBy": [
+        "fathom.list_meetings",
+        "fathom.get_recording_summary",
+        "fathom.get_recording_transcript",
+        "fathom.list_teams",
+        "fathom.list_team_members"
+      ],
+
+      "install": {
+        "fields": [
+          {
+            "id": "fathom.apiKey",
+            "label": "Fathom API Key",
+            "description": "Get from Fathom developer settings.",
+            "type": "secret",
+            "required": true,
+            "constantKey": "fathom.apiKey",
+            "placeholder": "api_key_here"
+          }
+        ]
+      },
+
+      "bindings": [
+        {
+          "schematictype": { "typename": "binding" },
+          "id": "binding.fathom.apiKey",
+          "values": {
+            "expr": "const.fathom.apiKey"
+          }
+        }
+      ]
+    },
+
+    {
+      "id": "fireflies",
+      "displayName": "Fireflies",
+      "usedBy": [
+        "fireflies.fetch_transcripts",
+        "fireflies.fetch_transcript_details"
+      ],
+
+      "install": {
+        "fields": [
+          {
+            "id": "fireflies.apiKey",
+            "label": "Fireflies API Key",
+            "description": "Used for Authorization: Bearer <key>.",
+            "type": "secret",
+            "required": true,
+            "constantKey": "fireflies.apiKey",
+            "placeholder": "api_key_here"
+          }
+        ]
+      },
+
+      "bindings": [
+        {
+          "schematictype": { "typename": "binding" },
+          "id": "binding.fireflies.authHeader",
+          "values": {
+            "expr": "concat('Bearer ', const.fireflies.apiKey)"
+          }
+        }
+      ]
+    },
+
+    {
+      "id": "drive",
+      "displayName": "Google Drive",
+      "usedBy": [
+        "drive.list_files",
+        "drive.list_folder",
+        "drive.get_file",
+        "drive.download_file",
+        "drive.export_google_doc",
+        "drive.list_revisions",
+        "drive.get_revision",
+        "drive.start_page_token",
+        "drive.changes_list",
+        "drive.search_recent",
+        "drive.list_files_all_drives",
+        "drive.list_shared_drives",
+        "drive.comments_list"
+      ],
+
+      "install": {
+        "fields": [
+          {
+            "id": "gdrive.tokenRef",
+            "label": "Google Drive OAuth Token",
+            "description": "OAuth token reference for Google Drive access.",
+            "type": "oauth",
+            "required": true,
+            "constantKey": "gdrive.tokenRef"
+          }
+        ]
+      },
+
+      "bindings": [
+        {
+          "schematictype": { "typename": "binding" },
+          "id": "binding.gdrive.authHeader",
+          "values": {
+            "expr": "concat('Bearer ', oauth(const.gdrive.tokenRef))"
+          }
+        }
+      ]
+    },
+
+    {
+      "id": "calendar",
+      "displayName": "Google Calendar",
+      "usedBy": [
+        "calendar.list_calendars",
+        "calendar.list_events",
+        "calendar.get_event",
+        "calendar.freebusy_query",
+        "calendar.list_instances",
+        "calendar.create_event",
+        "calendar.update_event",
+        "calendar.patch_event",
+        "calendar.delete_event",
+        "calendar.respond_event"
+      ],
+
+      "install": {
+        "fields": [
+          {
+            "id": "gcal.tokenRef",
+            "label": "Google Calendar OAuth Token",
+            "description": "OAuth token reference for Google Calendar access.",
+            "type": "oauth",
+            "required": true,
+            "constantKey": "gcal.tokenRef"
+          }
+        ]
+      },
+
+      "bindings": [
+        {
+          "schematictype": { "typename": "binding" },
+          "id": "binding.gcal.authHeader",
+          "values": {
+            "expr": "concat('Bearer ', oauth(const.gcal.tokenRef))"
+          }
+        }
+      ]
+    },
+
+    {
+      "id": "bitbucket",
+      "displayName": "Bitbucket",
+      "usedBy": [
+        "bitbucket.fetch_commit_diff",
+        "bitbucket.fetch_commit_patch",
+        "bitbucket.fetch_commits",
+        "bitbucket.fetch_pull_requests",
+        "bitbucket.fetch_pull_request",
+        "bitbucket.fetch_pull_request_diff",
+        "bitbucket.fetch_pull_request_files",
+        "bitbucket.fetch_branches",
+        "bitbucket.fetch_tags",
+        "bitbucket.fetch_file_contents",
+        "bitbucket.list_repositories",
+        "bitbucket.get_repository"
+      ],
+
+      "install": {
+        "fields": [
+          {
+            "id": "bitbucket.token",
+            "label": "Bitbucket API Token",
+            "description": "App password or OAuth token.",
+            "type": "secret",
+            "required": true,
+            "constantKey": "bitbucket.token",
+            "placeholder": "app_password_or_token"
+          },
+          {
+            "id": "bitbucket.workspace",
+            "label": "Default Workspace",
+            "description": "Workspace slug (e.g. my-team).",
+            "type": "string",
+            "required": false,
+            "constantKey": "bitbucket.workspace",
+            "placeholder": "workspace-name"
+          },
+          {
+            "id": "bitbucket.repo",
+            "label": "Default Repository",
+            "description": "Repo slug (e.g. lens-desktop).",
+            "type": "string",
+            "required": false,
+            "constantKey": "bitbucket.repo",
+            "placeholder": "repo-name"
+          }
+        ]
+      },
+
+      "bindings": [
+        {
+          "schematictype": { "typename": "binding" },
+          "id": "binding.bitbucket.authHeader",
+          "values": {
+            "expr": "concat('Bearer ', const.bitbucket.token)"
+          }
+        },
+        {
+          "schematictype": { "typename": "binding" },
+          "id": "binding.bitbucket.defaultWorkspace",
+          "values": {
+            "expr": "const.bitbucket.workspace"
+          }
+        },
+        {
+          "schematictype": { "typename": "binding" },
+          "id": "binding.bitbucket.defaultRepo",
+          "values": {
+            "expr": "const.bitbucket.repo"
+          }
+        }
+      ]
+    },
+
+    {
+      "id": "notion",
+      "displayName": "Notion",
+      "usedBy": [
+        "notion.search",
+        "notion.retrieve_database",
+        "notion.retrieve_data_source",
+        "notion.query_data_source",
+        "notion.retrieve_page",
+        "notion.retrieve_page_property",
+        "notion.list_comments",
+        "notion.list_block_children",
+        "notion.list_users",
+        "notion.get_user"
+      ],
+
+      "install": {
+        "fields": [
+          {
+            "id": "notion.apiKey",
+            "label": "Notion API Key",
+            "description": "Internal integration secret from Notion (starts with secret_).",
+            "type": "secret",
+            "required": true,
+            "constantKey": "notion.apiKey",
+            "placeholder": "secret_..."
+          }
+        ]
+      },
+
+      "bindings": [
+        {
+          "schematictype": { "typename": "binding" },
+          "id": "binding.notion.authHeader",
+          "values": {
+            "expr": "concat('Bearer ', const.notion.apiKey)"
+          }
+        }
+      ]
+    },
+    {
+      "id": "tldv",
+      "displayName": "tl;dv",
+      "usedBy": [
+        "tldv.list_meetings",
+        "tldv.get_meeting",
+        "tldv.get_transcript",
+        "tldv.get_highlights"
+      ],
+      "install": {
+        "fields": [
+          {
+            "id": "tldv.apiKey",
+            "label": "tl;dv API Key",
+            "description": "API key generated in tl;dv personal settings.",
+            "type": "secret",
+            "required": true,
+            "constantKey": "tldv.apiKey",
+            "placeholder": "tldv_api_key"
+          }
+        ]
+      },
+      "bindings": [
+        {
+          "schematictype": { "typename": "binding" },
+          "id": "binding.tldv.apiKey",
+          "values": {
+            "expr": "const.tldv.apiKey"
+          }
+        }
+      ]
+    },
+    {
+      "id": "github_projects",
+      "displayName": "GitHub Projects",
+      "usedBy": [
+        "github_projects.list_org_projects",
+        "github_projects.get_project",
+        "github_projects.list_project_fields",
+        "github_projects.list_project_items"
+      ],
+      "install": {
+        "fields": [
+          {
+            "id": "github_projects.token",
+            "label": "GitHub Personal Access Token",
+            "description": "Token for GitHub Projects v2 (GraphQL). Needs read:org for org projects and/or read:user for user projects.",
+            "type": "secret",
+            "required": true,
+            "constantKey": "github_projects.token",
+            "placeholder": "ghp_..."
+          },
+          {
+            "id": "github_projects.owner",
+            "label": "Default Owner (org or user login)",
+            "description": "Used as the default scope for listing projects.",
+            "type": "string",
+            "required": true,
+            "constantKey": "github_projects.owner",
+            "placeholder": "owner organization name"
+          }
+        ]
+      },
+      "bindings": [
+        {
+          "schematictype": { "typename": "binding" },
+          "id": "binding.github_projects.authHeader",
+          "values": { "expr": "concat('Bearer ', const.github_projects.token)" }
+        },
+        {
+          "schematictype": { "typename": "binding" },
+          "id": "binding.github_projects.owner",
+          "values": { "expr": "const.github_projects.owner" }
+        }
+      ]
+    },
+    {
+      "id": "xero",
+      "displayName": "Xero",
+      "usedBy": [
+        "xero.list_connections",
+        "xero.get_organisation",
+        "xero.list_contacts",
+        "xero.get_contact",
+        "xero.list_invoices",
+        "xero.get_invoice",
+        "xero.list_payments",
+        "xero.get_report_profit_and_loss",
+        "xero.get_report_balance_sheet"
+      ],
+      "install": {
+        "fields": [
+          {
+            "id": "xero.tokenRef",
+            "label": "Xero OAuth Token",
+            "description": "OAuth token reference for Xero access (access + refresh managed by your OAuth system).",
+            "type": "oauth",
+            "required": true,
+            "constantKey": "xero.tokenRef"
+          }
+        ]
+      },
+      "bindings": [
+        {
+          "schematictype": { "typename": "binding" },
+          "id": "binding.xero.authHeader",
+          "values": {
+            "expr": "concat('Bearer ', oauth(const.xero.tokenRef))"
+          }
+        },
+        {
+          "schematictype": { "typename": "binding" },
+          "id": "binding.xero.accountingBase",
+          "values": {
+            "expr": "'https://api.xero.com/api.xro/2.0'"
+          }
+        }
+      ]
+    },
+    {
+      "id": "gmail",
+      "displayName": "Gmail",
+      "usedBy": [
+        "gmail.get_profile",
+        "gmail.list_messages",
+        "gmail.get_message",
+        "gmail.get_attachment",
+        "gmail.list_threads",
+        "gmail.get_thread",
+        "gmail.list_labels",
+        "gmail.get_label"
+      ],
+      "install": {
+        "fields": [
+          {
+            "id": "gmail.tokenRef",
+            "label": "Gmail OAuth Token",
+            "description": "OAuth token reference for Gmail access.",
+            "type": "oauth",
+            "required": true,
+            "constantKey": "gmail.tokenRef"
+          }
+        ]
+      },
+      "bindings": [
+        {
+          "schematictype": { "typename": "binding" },
+          "id": "binding.gmail.authHeader",
+          "values": {
+            "expr": "concat('Bearer ', oauth(const.gmail.tokenRef))"
+          }
+        }
+      ]
+    }
+  ]
+}

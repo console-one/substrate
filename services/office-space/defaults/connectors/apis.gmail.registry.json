@@ -1,0 +1,250 @@
+{
+  "version": "1.0",
+  "connectorId": "gmail",
+  "apis": [
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "gmail.get_profile",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://gmail.googleapis.com/gmail/v1/users/me/profile",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.gmail.authHeader" }
+        },
+        "description": "Returns mailbox-level metadata (email address, total message and thread counts). Useful for sanity checks or estimating how many pages you may need to scan."
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "gmail.list_messages",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://gmail.googleapis.com/gmail/v1/users/me/messages?q={{arg.q}}&labelIds={{arg.labelIds}}&includeSpamTrash={{arg.includeSpamTrash}}&pageToken={{arg.pageToken}}&maxResults={{arg.maxResults}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.gmail.authHeader" },
+          "q": {
+            "$arg": "q",
+            "description": "Gmail search query (same syntax as Gmail web search), e.g. 'from:me newer_than:7d has:attachment'",
+            "type": "string",
+            "required": false
+          },
+          "labelIds": {
+            "$arg": "labelIds",
+            "description": "Comma-separated label IDs to filter by (e.g. 'INBOX,UNREAD'). Omit for all messages.",
+            "type": "string",
+            "required": false
+          },
+          "includeSpamTrash": {
+            "$arg": "includeSpamTrash",
+            "description": "Whether to include messages from SPAM and TRASH",
+            "type": "boolean",
+            "required": false,
+            "default": false
+          },
+          "pageToken": {
+            "$arg": "pageToken",
+            "description": "Token for retrieving the next page of results",
+            "type": "string",
+            "required": false
+          },
+          "maxResults": {
+            "$arg": "maxResults",
+            "description": "Maximum number of messages to return per page",
+            "type": "number",
+            "required": false,
+            "default": 100
+          }
+        },
+        "description": "Lists message IDs ONLY (no subject, sender, or body). Use this to find candidate emails, then can use gmail.get_message for messageId you want to inspect. Always paginate using pageToken if nextPageToken is present."
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "gmail.get_message",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://gmail.googleapis.com/gmail/v1/users/me/messages/{{arg.messageId}}?format={{arg.format}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.gmail.authHeader" },
+          "messageId": {
+            "$arg": "messageId",
+            "description": "Gmail message ID",
+            "type": "string",
+            "required": true
+          },
+          "format": {
+            "$arg": "format",
+            "description": "Message format: 'metadata' | 'full' | 'minimal' | 'raw'",
+            "type": "string",
+            "required": false,
+            "default": "full"
+          }
+        },
+        "description": "Fetches full details for ONE messageId returned by gmail.list_messages. Use format=metadata for fast header-only scans (From, To, Subject, Date). Use format=full only when you need the message body or attachments."
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "gmail.get_attachment",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://gmail.googleapis.com/gmail/v1/users/me/messages/{{arg.messageId}}/attachments/{{arg.attachmentId}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.gmail.authHeader" },
+          "messageId": {
+            "$arg": "messageId",
+            "description": "Gmail message ID that contains the attachment",
+            "type": "string",
+            "required": true
+          },
+          "attachmentId": {
+            "$arg": "attachmentId",
+            "description": "Attachment ID from message payload parts[].body.attachmentId",
+            "type": "string",
+            "required": true
+          }
+        },
+       "description": "Fetches a single attachment's raw data (base64url encoded). Use ONLY after discovering attachmentId inside a message payload. Decode before use."
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "gmail.list_threads",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://gmail.googleapis.com/gmail/v1/users/me/threads?q={{arg.q}}&labelIds={{arg.labelIds}}&includeSpamTrash={{arg.includeSpamTrash}}&pageToken={{arg.pageToken}}&maxResults={{arg.maxResults}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.gmail.authHeader" },
+          "q": {
+            "$arg": "q",
+            "description": "Gmail search query applied at thread level",
+            "type": "string",
+            "required": false
+          },
+          "labelIds": {
+            "$arg": "labelIds",
+            "description": "Comma-separated label IDs to filter by (e.g. 'INBOX,UNREAD')",
+            "type": "string",
+            "required": false
+          },
+          "includeSpamTrash": {
+            "$arg": "includeSpamTrash",
+            "description": "Whether to include threads from SPAM and TRASH",
+            "type": "boolean",
+            "required": false,
+            "default": false
+          },
+          "pageToken": {
+            "$arg": "pageToken",
+            "description": "Token for retrieving the next page of results",
+            "type": "string",
+            "required": false
+          },
+          "maxResults": {
+            "$arg": "maxResults",
+            "description": "Maximum number of threads to return per page",
+            "type": "number",
+            "required": false,
+            "default": 100
+          }
+        },
+        "description": "List thread IDs matching an optional Gmail query and/or label filters"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "gmail.get_thread",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://gmail.googleapis.com/gmail/v1/users/me/threads/{{arg.threadId}}?format={{arg.format}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.gmail.authHeader" },
+          "threadId": {
+            "$arg": "threadId",
+            "description": "Gmail thread ID",
+            "type": "string",
+            "required": true
+          },
+          "format": {
+            "$arg": "format",
+            "description": "Thread message format: 'metadata' | 'full' | 'minimal' | 'raw'",
+            "type": "string",
+            "required": false,
+            "default": "full"
+          }
+        },
+        "description": "Get a thread (includes its messages) in the requested format"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "gmail.list_labels",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://gmail.googleapis.com/gmail/v1/users/me/labels",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.gmail.authHeader" }
+        },
+        "description": "Lists all system and user-created labels. Use this to discover label IDs (e.g. INBOX, UNREAD, CATEGORY_PROMOTIONS) before filtering messages by labelIds."
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "gmail.get_label",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://gmail.googleapis.com/gmail/v1/users/me/labels/{{arg.labelId}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.gmail.authHeader" },
+          "labelId": {
+            "$arg": "labelId",
+            "description": "Label ID (e.g. 'INBOX', 'UNREAD', or a custom label ID from list_labels)",
+            "type": "string",
+            "required": true
+          }
+        },
+        "description": "Gets metadata and unread counts for ONE label. Useful for checking mailbox state (e.g. unread count) before listing messages."
+      }
+    }
+  ]
+}

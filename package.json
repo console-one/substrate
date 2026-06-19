@@ -1,0 +1,40 @@
+{
+  "name": "@console-one/substrate",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Event orchestration across agents and users, built on the @console-one/sequence substrate. The ft library: an append-only behavioral fact/judgment kernel plus the office-space service built on it.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/console-one/substrate.git"
+  },
+  "bugs": {
+    "url": "https://github.com/console-one/substrate/issues"
+  },
+  "homepage": "https://github.com/console-one/substrate#readme",
+  "workspaces": [
+    "packages/*",
+    "services/*"
+  ],
+  "scripts": {
+    "start": "npm start -w @ft/office-space",
+    "console": "npm run console -w @ft/office-space",
+    "build": "npm run build --workspaces",
+    "test": "npm test --workspaces",
+    "lint": "npm run lint --workspaces",
+    "clean": "npm run clean --workspaces"
+  },
+  "keywords": [
+    "substrate",
+    "ft",
+    "append-only",
+    "judgment",
+    "fact-space",
+    "agents",
+    "office-space"
+  ],
+  "author": "zerotoprod",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  }
+}

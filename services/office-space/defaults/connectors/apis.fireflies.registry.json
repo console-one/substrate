@@ -1,0 +1,69 @@
+{
+  "version": "1.0",
+  "connectorId": "fireflies",
+  "apis": [
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "fireflies.fetch_transcripts",
+      "values": {
+        "method": "POST",
+        "mode": "graphql",
+        "endpoint": "https://api.fireflies.ai/graphql",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}"
+        },
+        "body": {
+          "query": "\n      query GetTranscripts($fromDate: DateTime, $toDate: DateTime, $limit: Int) {\n        transcripts(fromDate: $fromDate, toDate: $toDate, limit: $limit) {\n          id\n          title\n          date\n          duration\n          participants\n          summary {\n            short_summary\n            keywords\n            action_items\n          }\n        }\n      }\n    "
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.fireflies.authHeader" },
+          "fromDate": {
+            "$arg": "fromDate",
+            "description": "Start date for filtering transcripts (ISO 8601 format)",
+            "type": "string",
+            "required": false
+          },
+          "toDate": {
+            "$arg": "toDate",
+            "description": "End date for filtering transcripts (ISO 8601 format)",
+            "type": "string",
+            "required": false
+          },
+          "limit": {
+            "$arg": "limit",
+            "description": "Maximum number of transcripts to return",
+            "type": "number",
+            "required": false,
+            "default": 10
+          }
+        },
+        "description": "Fetch a list of meeting transcripts with summaries within a date range"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "fireflies.fetch_transcript_details",
+      "values": {
+        "method": "POST",
+        "mode": "graphql",
+        "endpoint": "https://api.fireflies.ai/graphql",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}"
+        },
+        "body": {
+          "query": "query GetTranscript($id: String!) {\n  transcript(id: $id) {\n    id\n    title\n    date\n    duration\n    participants\n    summary {\n      short_summary\n      keywords\n      action_items\n    }\n    analytics {\n      sentiments {\n        positive_pct\n        neutral_pct\n        negative_pct\n      }\n    }\n    sentences {\n      index\n      speaker_name\n      text\n      start_time\n      end_time\n    }\n  }\n}"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.fireflies.authHeader" },
+          "id": {
+            "$arg": "id",
+            "description": "The transcript identifier",
+            "type": "string",
+            "required": true
+          }
+        },
+        "description": "Fetch detailed information for a specific transcript including full sentences and analytics"
+      }
+    }
+  ]
+}

@@ -1,0 +1,247 @@
+{
+  "version": "1.0",
+  "connectorId": "github",
+  "apis": [
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "github.fetch_commit_diffs",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.github.com/repos/{{const.github.owner}}/{{const.github.repo}}/commits/{{arg.sha}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/vnd.github.v3+json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.github.authHeader" },
+          "sha": {
+            "$arg": "sha",
+            "description": "The commit SHA hash to fetch",
+            "type": "string",
+            "required": true
+          }
+        },
+        "description": "Fetch the diff and metadata for a specific commit by SHA"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "github.fetch_commits_by_date",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.github.com/repos/{{const.github.owner}}/{{const.github.repo}}/commits?sha={{arg.branch}}&since={{arg.since}}T00:00:00Z&until={{arg.until}}T23:59:59Z",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/vnd.github.v3+json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.github.authHeader" },
+          "branch": {
+            "$arg": "branch",
+            "description": "Branch name or SHA to fetch commits from",
+            "type": "string",
+            "required": true
+          },
+          "since": {
+            "$arg": "since",
+            "description": "Start date in YYYY-MM-DD format",
+            "type": "string",
+            "required": true
+          },
+          "until": {
+            "$arg": "until",
+            "description": "End date in YYYY-MM-DD format",
+            "type": "string",
+            "required": true
+          }
+        },
+        "description": "Fetch commits within a date range on a specific branch"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "github.fetch_pull_requests",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.github.com/repos/{{const.github.owner}}/{{const.github.repo}}/pulls?state={{arg.state}}&per_page={{arg.per_page}}&page={{arg.page}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/vnd.github.v3+json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.github.authHeader" },
+          "state": {
+            "$arg": "state",
+            "description": "Filter by state: 'open', 'closed', or 'all'",
+            "type": "string",
+            "required": false,
+            "default": "open"
+          },
+          "per_page": {
+            "$arg": "per_page",
+            "description": "Number of results per page (max 100)",
+            "type": "number",
+            "required": false,
+            "default": 30
+          },
+          "page": {
+            "$arg": "page",
+            "description": "Page number for pagination",
+            "type": "number",
+            "required": false,
+            "default": 1
+          }
+        },
+        "description": "List pull requests in the repository"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "github.fetch_pull_request",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.github.com/repos/{{const.github.owner}}/{{const.github.repo}}/pulls/{{arg.pull_number}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/vnd.github.v3+json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.github.authHeader" },
+          "pull_number": {
+            "$arg": "pull_number",
+            "description": "The pull request number",
+            "type": "number",
+            "required": true
+          }
+        },
+        "description": "Fetch details of a specific pull request by number"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "github.fetch_pull_request_files",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.github.com/repos/{{const.github.owner}}/{{const.github.repo}}/pulls/{{arg.pull_number}}/files",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/vnd.github.v3+json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.github.authHeader" },
+          "pull_number": {
+            "$arg": "pull_number",
+            "description": "The pull request number",
+            "type": "number",
+            "required": true
+          }
+        },
+        "description": "List files changed in a pull request"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "github.fetch_contributors",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.github.com/repos/{{const.github.owner}}/{{const.github.repo}}/contributors?anon={{arg.anon}}&per_page={{arg.per_page}}&page={{arg.page}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/vnd.github.v3+json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.github.authHeader" },
+          "anon": {
+            "$arg": "anon",
+            "description": "Include anonymous contributors (true/false)",
+            "type": "string",
+            "required": false,
+            "default": "false"
+          },
+          "per_page": {
+            "$arg": "per_page",
+            "description": "Number of results per page (max 100)",
+            "type": "number",
+            "required": false,
+            "default": 30
+          },
+          "page": {
+            "$arg": "page",
+            "description": "Page number for pagination",
+            "type": "number",
+            "required": false,
+            "default": 1
+          }
+        },
+        "description": "List contributors to the repository"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "github.fetch_branches",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.github.com/repos/{{const.github.owner}}/{{const.github.repo}}/branches?per_page={{arg.per_page}}&page={{arg.page}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/vnd.github.v3+json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.github.authHeader" },
+          "per_page": {
+            "$arg": "per_page",
+            "description": "Number of results per page (max 100)",
+            "type": "number",
+            "required": false,
+            "default": 30
+          },
+          "page": {
+            "$arg": "page",
+            "description": "Page number for pagination",
+            "type": "number",
+            "required": false,
+            "default": 1
+          }
+        },
+        "description": "List all branches in the repository"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "github.fetch_file_contents",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.github.com/repos/{{const.github.owner}}/{{const.github.repo}}/contents/{{arg.path}}?ref={{arg.ref}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/vnd.github.v3+json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.github.authHeader" },
+          "path": {
+            "$arg": "path",
+            "description": "File or directory path in the repository",
+            "type": "string",
+            "required": true
+          },
+          "ref": {
+            "$arg": "ref",
+            "description": "Branch name, tag, or commit SHA",
+            "type": "string",
+            "required": false,
+            "default": "main"
+          }
+        },
+        "description": "Fetch the contents of a file or directory at a specific path"
+      }
+    }
+  ]
+}

@@ -1,0 +1,612 @@
+{
+  "version": "1.0",
+  "connectorId": "xero",
+  "apis": [
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "xero.list_connections",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.xero.com/connections",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": {
+            "$ref": "binding.xero.authHeader"
+          }
+        },
+        "description": "STEP 1 (tenant discovery): List the Xero tenants (organisations) the authenticated user has authorised. Use this first to obtain a `tenantId`, then pass that `tenantId` as the `xero-tenant-id` header to nearly all Accounting API calls below."
+      }
+    },
+
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "xero.get_organisation",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.xero.com/api.xro/2.0/Organisation",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json",
+          "xero-tenant-id": "{{arg.tenantId}}"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.xero.authHeader" },
+          "tenantId": {
+            "$arg": "tenantId",
+            "description": "Xero tenant ID to target. Get this from `xero.list_connections` (pick the correct organisation/tenant for the workflow).",
+            "type": "string",
+            "required": true
+          }
+        },
+        "description": "Smoke test + org context: Fetch organisation metadata (name, base currency, country, timezone/settings). Use after selecting a tenant to confirm access and to display basic company context."
+      }
+    },
+
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "xero.list_contacts",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.xero.com/api.xro/2.0/Contacts?page={{arg.page}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json",
+          "xero-tenant-id": "{{arg.tenantId}}"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.xero.authHeader" },
+          "tenantId": {
+            "$arg": "tenantId",
+            "description": "Xero tenant ID  to query. Get from `xero.list_connections`.",
+            "type": "string",
+            "required": true
+          },
+          "page": {
+            "$arg": "page",
+            "description": "1-based page number for pagination. Use 1 for the first page, then increment if you need more results.",
+            "type": "number",
+            "required": false,
+            "default": 1
+          }
+        },
+        "description": "Customers & suppliers: List contacts for the tenant. Use this to find a contact (by name/email) and capture its `ContactID` for downstream queries (e.g., invoices by contact, aged receivables/payables interpretation)."
+      }
+    },
+
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "xero.get_contact",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.xero.com/api.xro/2.0/Contacts/{{arg.contactId}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json",
+          "xero-tenant-id": "{{arg.tenantId}}"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.xero.authHeader" },
+          "tenantId": {
+            "$arg": "tenantId",
+            "description": "Xero tenant ID . Get from `xero.list_connections`.",
+            "type": "string",
+            "required": true
+          },
+          "contactId": {
+            "$arg": "contactId",
+            "description": "The contact's `ContactID` (GUID). Get this from `xero.list_contacts` results.",
+            "type": "string",
+            "required": true
+          }
+        },
+        "description": "Contact detail: Fetch a single contact by `ContactID`. Use when you already have the ID and need full details (addresses, phones, tax info) or to confirm you've selected the right entity."
+      }
+    },
+
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "xero.list_invoices",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.xero.com/api.xro/2.0/Invoices?page={{arg.page}}&Statuses={{arg.statuses}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json",
+          "xero-tenant-id": "{{arg.tenantId}}"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.xero.authHeader" },
+          "tenantId": {
+            "$arg": "tenantId",
+            "description": "Xero tenant ID . Get from `xero.list_connections`.",
+            "type": "string",
+            "required": true
+          },
+          "page": {
+            "$arg": "page",
+            "description": "1-based page number for pagination. Use 1 for the first page, then increment to fetch more.",
+            "type": "number",
+            "required": false,
+            "default": 1
+          },
+          "statuses": {
+            "$arg": "statuses",
+            "description": "Optional comma-separated status filter (e.g., 'DRAFT,AUTHORISED,PAID'). Leave empty to include all statuses.",
+            "type": "string",
+            "required": false,
+            "default": ""
+          }
+        },
+        "description": "Core AR/AP documents: List invoices for the tenant. Includes both Accounts Receivable (sales invoices, type `ACCREC`) and Accounts Payable bills (purchase invoices, type `ACCPAY`). Use this to find invoices/bills and capture `InvoiceID` for detail retrieval with `xero.get_invoice`."
+      }
+    },
+
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "xero.get_invoice",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.xero.com/api.xro/2.0/Invoices/{{arg.invoiceId}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json",
+          "xero-tenant-id": "{{arg.tenantId}}"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.xero.authHeader" },
+          "tenantId": {
+            "$arg": "tenantId",
+            "description": "Xero tenant ID . Get from `xero.list_connections`.",
+            "type": "string",
+            "required": true
+          },
+          "invoiceId": {
+            "$arg": "invoiceId",
+            "description": "The invoice's `InvoiceID` (GUID). Get this from `xero.list_invoices` results.",
+            "type": "string",
+            "required": true
+          }
+        },
+        "description": "Invoice/bill detail: Fetch a single invoice by `InvoiceID` including line items, totals, taxes, status, and linked contact. Use for drill-down, explanations, or extracting structured data from a specific document."
+      }
+    },
+
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "xero.list_quotes",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.xero.com/api.xro/2.0/Quotes?page={{arg.page}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json",
+          "xero-tenant-id": "{{arg.tenantId}}"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.xero.authHeader" },
+          "tenantId": {
+            "$arg": "tenantId",
+            "description": "Xero tenant ID. Get from `xero.list_connections`.",
+            "type": "string",
+            "required": true
+          },
+          "page": {
+            "$arg": "page",
+            "description": "1-based page number for pagination.",
+            "type": "number",
+            "required": false,
+            "default": 1
+          }
+        },
+        "description": "Pre-invoice sales: List quotes for the tenant. Use to show pipeline / pending work before invoicing, or to find a quote that later becomes an invoice."
+      }
+    },
+
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "xero.list_payments",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.xero.com/api.xro/2.0/Payments?page={{arg.page}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json",
+          "xero-tenant-id": "{{arg.tenantId}}"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.xero.authHeader" },
+          "tenantId": {
+            "$arg": "tenantId",
+            "description": "Xero tenant ID. Get from `xero.list_connections`.",
+            "type": "string",
+            "required": true
+          },
+          "page": {
+            "$arg": "page",
+            "description": "1-based page number for pagination.",
+            "type": "number",
+            "required": false,
+            "default": 1
+          }
+        },
+        "description": "Cash application: List payments recorded against invoices and credit notes. Use this to understand which invoices have been paid, partially paid, or settled via credits, and to support payment history views."
+      }
+    },
+
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "xero.list_credit_notes",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.xero.com/api.xro/2.0/CreditNotes?page={{arg.page}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json",
+          "xero-tenant-id": "{{arg.tenantId}}"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.xero.authHeader" },
+          "tenantId": {
+            "$arg": "tenantId",
+            "description": "Xero tenant ID. Get from `xero.list_connections`.",
+            "type": "string",
+            "required": true
+          },
+          "page": {
+            "$arg": "page",
+            "description": "1-based page number for pagination.",
+            "type": "number",
+            "required": false,
+            "default": 1
+          }
+        },
+        "description": "Refunds/credits: List credit notes for the tenant. Use to explain invoice reductions, refunds, and how credits are applied to open receivables/payables."
+      }
+    },
+
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "xero.list_overpayments",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.xero.com/api.xro/2.0/Overpayments?page={{arg.page}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json",
+          "xero-tenant-id": "{{arg.tenantId}}"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.xero.authHeader" },
+          "tenantId": {
+            "$arg": "tenantId",
+            "description": "Xero tenant ID. Get from `xero.list_connections`.",
+            "type": "string",
+            "required": true
+          },
+          "page": {
+            "$arg": "page",
+            "description": "1-based page number for pagination.",
+            "type": "number",
+            "required": false,
+            "default": 1
+          }
+        },
+        "description": "Unapplied excess payments: List overpayments (money received/paid that is not fully allocated to an invoice/bill). Use to explain outstanding customer credits or supplier overpayments."
+      }
+    },
+
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "xero.list_prepayments",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.xero.com/api.xro/2.0/Prepayments?page={{arg.page}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json",
+          "xero-tenant-id": "{{arg.tenantId}}"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.xero.authHeader" },
+          "tenantId": {
+            "$arg": "tenantId",
+            "description": "Xero tenant ID . Get from `xero.list_connections`.",
+            "type": "string",
+            "required": true
+          },
+          "page": {
+            "$arg": "page",
+            "description": "1-based page number for pagination.",
+            "type": "number",
+            "required": false,
+            "default": 1
+          }
+        },
+        "description": "Payments before documents: List prepayments made before an invoice/bill exists. Use to explain deposits and pre-paid supplier/customer situations."
+      }
+    },
+
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "xero.list_accounts",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.xero.com/api.xro/2.0/Accounts",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json",
+          "xero-tenant-id": "{{arg.tenantId}}"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.xero.authHeader" },
+          "tenantId": {
+            "$arg": "tenantId",
+            "description": "Xero tenant ID . Get from `xero.list_connections`.",
+            "type": "string",
+            "required": true
+          }
+        },
+        "description": "Chart of accounts: List all ledger accounts (e.g., Sales, Rent Expense, Bank accounts, AR/AP control accounts). Use to map report lines/journal references to human-readable account names and categories."
+      }
+    },
+
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "xero.list_tracking_categories",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.xero.com/api.xro/2.0/TrackingCategories",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json",
+          "xero-tenant-id": "{{arg.tenantId}}"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.xero.authHeader" },
+          "tenantId": {
+            "$arg": "tenantId",
+            "description": "Xero tenant ID . Get from `xero.list_connections`.",
+            "type": "string",
+            "required": true
+          }
+        },
+        "description": "Cost centres / dimensions: List tracking categories (e.g., Department, Location) used to segment P&L and invoice/bill line items. Use to show breakdowns and to interpret tracking allocations in reports."
+      }
+    },
+
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "xero.list_tax_rates",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.xero.com/api.xro/2.0/TaxRates",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json",
+          "xero-tenant-id": "{{arg.tenantId}}"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.xero.authHeader" },
+          "tenantId": {
+            "$arg": "tenantId",
+            "description": "Xero tenant ID . Get from `xero.list_connections`.",
+            "type": "string",
+            "required": true
+          }
+        },
+        "description": "Tax definitions: List tax rates (names, percentages, applicability). Use to explain invoice/bill tax totals, validate line-item tax types, and interpret tax-related report lines."
+      }
+    },
+
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "xero.list_expense_claims",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.xero.com/api.xro/2.0/ExpenseClaims?page={{arg.page}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json",
+          "xero-tenant-id": "{{arg.tenantId}}"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.xero.authHeader" },
+          "tenantId": {
+            "$arg": "tenantId",
+            "description": "Xero tenant ID . Get from `xero.list_connections`.",
+            "type": "string",
+            "required": true
+          },
+          "page": {
+            "$arg": "page",
+            "description": "1-based page number for pagination.",
+            "type": "number",
+            "required": false,
+            "default": 1
+          }
+        },
+        "description": "Employee expenses (high level): List expense claims submitted by employees. Use to summarize expense activity and find related receipts; may include who submitted, status, and totals depending on tenant configuration."
+      }
+    },
+
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "xero.list_receipts",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.xero.com/api.xro/2.0/Receipts?page={{arg.page}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json",
+          "xero-tenant-id": "{{arg.tenantId}}"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.xero.authHeader" },
+          "tenantId": {
+            "$arg": "tenantId",
+            "description": "Xero tenant ID . Get from `xero.list_connections`.",
+            "type": "string",
+            "required": true
+          },
+          "page": {
+            "$arg": "page",
+            "description": "1-based page number for pagination.",
+            "type": "number",
+            "required": false,
+            "default": 1
+          }
+        },
+        "description": "Employee expenses (line-level): List receipts that support expense claims. Use to extract merchant/date/amount/category detail for expense analysis."
+      }
+    },
+
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "xero.get_report_profit_and_loss",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.xero.com/api.xro/2.0/Reports/ProfitAndLoss?fromDate={{arg.fromDate}}&toDate={{arg.toDate}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json",
+          "xero-tenant-id": "{{arg.tenantId}}"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.xero.authHeader" },
+          "tenantId": {
+            "$arg": "tenantId",
+            "description": "Xero tenant ID . Get from `xero.list_connections`.",
+            "type": "string",
+            "required": true
+          },
+          "fromDate": {
+            "$arg": "fromDate",
+            "description": "Start date (inclusive) for the report range. Format: YYYY-MM-DD.",
+            "type": "string",
+            "required": true
+          },
+          "toDate": {
+            "$arg": "toDate",
+            "description": "End date (inclusive) for the report range. Format: YYYY-MM-DD.",
+            "type": "string",
+            "required": true
+          }
+        },
+        "description": "Financial performance: Profit & Loss report (income vs expenses) over a date range. Use for summary insights (revenue, gross profit, net profit) and category breakdowns; pair with `xero.list_accounts` if you need to map account codes/names."
+      }
+    },
+
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "xero.get_report_balance_sheet",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.xero.com/api.xro/2.0/Reports/BalanceSheet?date={{arg.date}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json",
+          "xero-tenant-id": "{{arg.tenantId}}"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.xero.authHeader" },
+          "tenantId": {
+            "$arg": "tenantId",
+            "description": "Xero tenant ID . Get from `xero.list_connections`.",
+            "type": "string",
+            "required": true
+          },
+          "date": {
+            "$arg": "date",
+            "description": "As-of date for the balance sheet snapshot. Format: YYYY-MM-DD.",
+            "type": "string",
+            "required": true
+          }
+        },
+        "description": "Financial position: Balance Sheet report as-of a date (assets, liabilities, equity). Use for cash/AR/AP context and overall financial health; optionally pair with `xero.list_accounts` for account mapping."
+      }
+    },
+
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "xero.get_report_aged_receivables",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.xero.com/api.xro/2.0/Reports/AgedReceivablesByContact?contactId={{arg.contactId}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json",
+          "xero-tenant-id": "{{arg.tenantId}}"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.xero.authHeader" },
+          "tenantId": {
+            "$arg": "tenantId",
+            "description": "Xero tenant ID . Get from `xero.list_connections`.",
+            "type": "string",
+            "required": true
+          },
+           "contactId": {
+            "$arg": "contactId",
+            "type": "string",
+            "required": true,
+            "description": "Xero ContactID (UUID). Obtain from xero.list_contacts or xero.get_contact. REQUIRED for this report."
+          }
+        },
+        "description": "Collections: Aged receivables by contact (who owes you, and how overdue). Use to identify top debtors and overdue buckets; optionally join with `xero.list_contacts`/`xero.get_contact` for richer contact context."
+      }
+    },
+
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "xero.get_report_aged_payables",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.xero.com/api.xro/2.0/Reports/AgedPayablesByContact?contactId={{arg.contactId}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json",
+          "xero-tenant-id": "{{arg.tenantId}}"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.xero.authHeader" },
+          "tenantId": {
+            "$arg": "tenantId",
+            "description": "Xero tenant ID (organisation) to query. MUST come from `xero.list_connections` (pick the intended tenant; using the wrong tenant often causes 403/400).",
+            "type": "string",
+            "required": true
+          },
+          "contactId": {
+            "$arg": "contactId",
+            "description": "Xero ContactID (GUID) for the supplier/contact you want the aged payables for. Get from `xero.list_contacts` (or from an invoice/payment record that references a Contact).",
+            "type": "string",
+            "required": true
+          }
+        },
+        "description": "Bills due for a specific supplier/contact: Aged Payables by Contact. IMPORTANT: This report is per-contact and requires `contactId`. Typical flow: (1) call `xero.list_connections` to choose tenantId, (2) call `xero.list_contacts` to find the supplier ContactID, (3) call this report with that tenantId + contactId."
+      }
+    }
+  ]
+}

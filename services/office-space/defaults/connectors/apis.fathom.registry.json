@@ -1,0 +1,180 @@
+{
+  "version": "1.0",
+  "connectorId": "fathom",
+  "apis": [
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "fathom.list_meetings",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.fathom.ai/external/v1/meetings?created_after={{arg.created_after}}&created_before={{arg.created_before}}&cursor={{arg.cursor}}&include_action_items={{arg.include_action_items}}&include_crm_matches={{arg.include_crm_matches}}&include_summary={{arg.include_summary}}&include_transcript={{arg.include_transcript}}&calendar_invitees_domains_type={{arg.calendar_invitees_domains_type}}",
+        "headers": {
+          "X-Api-Key": "{{ref.apiKey}}"
+        },
+        "bindings": {
+          "apiKey": { "$ref": "binding.fathom.apiKey" },
+          "created_after": {
+            "$arg": "created_after",
+            "description": "Filter meetings created after this ISO 8601 timestamp",
+            "type": "string",
+            "required": false
+          },
+          "created_before": {
+            "$arg": "created_before",
+            "description": "Filter meetings created before this ISO 8601 timestamp",
+            "type": "string",
+            "required": false
+          },
+          "cursor": {
+            "$arg": "cursor",
+            "description": "Pagination cursor for the next page of results",
+            "type": "string",
+            "required": false
+          },
+          "include_action_items": {
+            "$arg": "include_action_items",
+            "description": "Include action items in the response (true/false)",
+            "type": "string",
+            "required": false,
+            "default": "false"
+          },
+          "include_crm_matches": {
+            "$arg": "include_crm_matches",
+            "description": "Include CRM matches in the response (true/false)",
+            "type": "string",
+            "required": false,
+            "default": "false"
+          },
+          "include_summary": {
+            "$arg": "include_summary",
+            "description": "Include meeting summary in the response (true/false)",
+            "type": "string",
+            "required": false,
+            "default": "false"
+          },
+          "include_transcript": {
+            "$arg": "include_transcript",
+            "description": "Include transcript in the response (true/false)",
+            "type": "string",
+            "required": false,
+            "default": "false"
+          },
+          "calendar_invitees_domains_type": {
+            "$arg": "calendar_invitees_domains_type",
+            "description": "Filter by invitee domains type",
+            "type": "string",
+            "required": false
+          }
+        },
+        "description": "List meetings with optional filters and included data"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "fathom.get_recording_summary",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.fathom.ai/external/v1/recordings/{{arg.recording_id}}/summary?destination_url={{arg.destination_url}}",
+        "headers": {
+          "X-Api-Key": "{{ref.apiKey}}"
+        },
+        "bindings": {
+          "apiKey": { "$ref": "binding.fathom.apiKey" },
+          "recording_id": {
+            "$arg": "recording_id",
+            "description": "The recording identifier",
+            "type": "string",
+            "required": true
+          },
+          "destination_url": {
+            "$arg": "destination_url",
+            "description": "Optional URL to redirect the summary to",
+            "type": "string",
+            "required": false
+          }
+        },
+        "description": "Get the AI-generated summary for a specific recording"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "fathom.get_recording_transcript",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.fathom.ai/external/v1/recordings/{{arg.recording_id}}/transcript?destination_url={{arg.destination_url}}",
+        "headers": {
+          "X-Api-Key": "{{ref.apiKey}}"
+        },
+        "bindings": {
+          "apiKey": { "$ref": "binding.fathom.apiKey" },
+          "recording_id": {
+            "$arg": "recording_id",
+            "description": "The recording identifier",
+            "type": "string",
+            "required": true
+          },
+          "destination_url": {
+            "$arg": "destination_url",
+            "description": "Optional URL to redirect the transcript to",
+            "type": "string",
+            "required": false
+          }
+        },
+        "description": "Get the full transcript for a specific recording"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "fathom.list_teams",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.fathom.ai/external/v1/teams?cursor={{arg.cursor}}",
+        "headers": {
+          "X-Api-Key": "{{ref.apiKey}}"
+        },
+        "bindings": {
+          "apiKey": { "$ref": "binding.fathom.apiKey" },
+          "cursor": {
+            "$arg": "cursor",
+            "description": "Pagination cursor for the next page of results",
+            "type": "string",
+            "required": false
+          }
+        },
+        "description": "List all teams accessible to the authenticated user"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "fathom.list_team_members",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://api.fathom.ai/external/v1/team_members?team={{arg.team}}&cursor={{arg.cursor}}",
+        "headers": {
+          "X-Api-Key": "{{ref.apiKey}}"
+        },
+        "bindings": {
+          "apiKey": { "$ref": "binding.fathom.apiKey" },
+          "team": {
+            "$arg": "team",
+            "description": "Team identifier to filter members by (optional for all teams)",
+            "type": "string",
+            "required": false
+          },
+          "cursor": {
+            "$arg": "cursor",
+            "description": "Pagination cursor for the next page of results",
+            "type": "string",
+            "required": false
+          }
+        },
+        "description": "List members of a specific team or all teams"
+      }
+    }
+  ]
+}

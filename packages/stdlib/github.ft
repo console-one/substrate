@@ -1,0 +1,19 @@
+-- GitHub API
+-- Provides repository, issue, and PR operations via GitHub REST API.
+--
+-- Install: import github from './github.ft'
+-- Requires: Personal access token or GitHub App credentials
+
+-- Issue operations
+github.issues.create = (repo: string, title: string, body: string) -> { id: number, url: string } ~lognormal(mu = 6, sigma = 0.8)
+github.issues.list = (repo: string, state: string) -> [{ id: number, title: string, state: string }]
+github.issues.update = (repo: string, issue_number: number, state: string) -> { id: number, state: string }
+
+-- Binding
+github.endpoint = "https://api.github.com"
+github.auth = ref(id.keys.github)
+
+-- Constraints
+github.limits.requests_per_hour = 5000
+
+-- [[ GitHub token : ghp_... from https://github.com/settings/tokens ]]

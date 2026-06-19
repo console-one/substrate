@@ -1,0 +1,374 @@
+{
+  "version": "1.0",
+  "connectorId": "calendar",
+  "apis": [
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "calendar.list_calendars",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://www.googleapis.com/calendar/v3/users/me/calendarList?pageToken={{arg.pageToken}}&maxResults={{arg.maxResults}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.gcal.authHeader" },
+          "pageToken": {
+            "$arg": "pageToken",
+            "description": "Token for retrieving the next page of results",
+            "type": "string",
+            "required": false
+          },
+          "maxResults": {
+            "$arg": "maxResults",
+            "description": "Maximum number of calendars to return per page",
+            "type": "number",
+            "required": false,
+            "default": 100
+          }
+        },
+        "description": "List all calendars accessible by the authenticated user"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "calendar.list_events",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://www.googleapis.com/calendar/v3/calendars/{{arg.calendarId}}/events?timeMin={{arg.timeMin}}&timeMax={{arg.timeMax}}&singleEvents=true&orderBy=startTime&pageToken={{arg.pageToken}}&maxResults={{arg.maxResults}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.gcal.authHeader" },
+          "calendarId": {
+            "$arg": "calendarId",
+            "description": "Calendar identifier or 'primary' for the user's primary calendar",
+            "type": "string",
+            "required": true
+          },
+          "timeMin": {
+            "$arg": "timeMin",
+            "description": "Start time in RFC3339 format (e.g., '2025-01-01T00:00:00Z')",
+            "type": "string",
+            "required": true
+          },
+          "timeMax": {
+            "$arg": "timeMax",
+            "description": "End time in RFC3339 format (e.g., '2025-12-31T23:59:59Z')",
+            "type": "string",
+            "required": true
+          },
+          "pageToken": {
+            "$arg": "pageToken",
+            "description": "Token for retrieving the next page of results",
+            "type": "string",
+            "required": false
+          },
+          "maxResults": {
+            "$arg": "maxResults",
+            "description": "Maximum number of events to return per page",
+            "type": "number",
+            "required": false,
+            "default": 250
+          }
+        },
+        "description": "List events in a calendar within a specified time range"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "calendar.get_event",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://www.googleapis.com/calendar/v3/calendars/{{arg.calendarId}}/events/{{arg.eventId}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.gcal.authHeader" },
+          "calendarId": {
+            "$arg": "calendarId",
+            "description": "Calendar identifier or 'primary' for the user's primary calendar",
+            "type": "string",
+            "required": true
+          },
+          "eventId": {
+            "$arg": "eventId",
+            "description": "The event ID from the 'id' field (not 'eid' from htmlLink)",
+            "type": "string",
+            "required": true
+          }
+        },
+        "description": "Get details of a specific calendar event"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "calendar.freebusy_query",
+      "values": {
+        "method": "POST",
+        "mode": "rest:post",
+        "endpoint": "https://www.googleapis.com/calendar/v3/freeBusy",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json",
+          "Content-Type": "application/json"
+        },
+        "body": "{\n  \"timeMin\": \"{{arg.timeMin}}\",\n  \"timeMax\": \"{{arg.timeMax}}\",\n  \"items\": {{arg.calendarIds}}\n}",
+        "bindings": {
+          "authHeader": { "$ref": "binding.gcal.authHeader" },
+          "timeMin": {
+            "$arg": "timeMin",
+            "description": "Start time in RFC3339 format (e.g., '2025-01-01T00:00:00Z')",
+            "type": "string",
+            "required": true
+          },
+          "timeMax": {
+            "$arg": "timeMax",
+            "description": "End time in RFC3339 format (e.g., '2025-12-31T23:59:59Z')",
+            "type": "string",
+            "required": true
+          },
+          "calendarIds": {
+            "$arg": "calendarIds",
+            "description": "Array of calendar identifiers to query (e.g., [{\"id\": \"primary\"}])",
+            "type": "array",
+            "required": true
+          }
+        },
+        "description": "Query free/busy information for multiple calendars"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "calendar.list_instances",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://www.googleapis.com/calendar/v3/calendars/{{arg.calendarId}}/events/{{arg.eventId}}/instances?timeMin={{arg.timeMin}}&timeMax={{arg.timeMax}}&pageToken={{arg.pageToken}}&maxResults={{arg.maxResults}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.gcal.authHeader" },
+          "calendarId": {
+            "$arg": "calendarId",
+            "description": "Calendar identifier or 'primary' for the user's primary calendar",
+            "type": "string",
+            "required": true
+          },
+          "eventId": {
+            "$arg": "eventId",
+            "description": "The recurring event ID from the 'id' field (not 'eid' from htmlLink)",
+            "type": "string",
+            "required": true
+          },
+          "timeMin": {
+            "$arg": "timeMin",
+            "description": "Start time in RFC3339 format (e.g., '2025-01-01T00:00:00Z')",
+            "type": "string",
+            "required": false
+          },
+          "timeMax": {
+            "$arg": "timeMax",
+            "description": "End time in RFC3339 format (e.g., '2025-12-31T23:59:59Z')",
+            "type": "string",
+            "required": false
+          },
+          "pageToken": {
+            "$arg": "pageToken",
+            "description": "Token for retrieving the next page of results",
+            "type": "string",
+            "required": false
+          },
+          "maxResults": {
+            "$arg": "maxResults",
+            "description": "Maximum number of instances to return per page",
+            "type": "number",
+            "required": false,
+            "default": 250
+          }
+        },
+        "description": "List instances of a recurring event within a time range"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "calendar.create_event",
+      "values": {
+        "method": "POST",
+        "mode": "rest:post",
+        "endpoint": "https://www.googleapis.com/calendar/v3/calendars/{{arg.calendarId}}/events?conferenceDataVersion=1",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json",
+          "Content-Type": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.gcal.authHeader" },
+          "calendarId": {
+            "$arg": "calendarId",
+            "type": "string",
+            "required": true,
+            "description": "Calendar identifier or 'primary'"
+          },
+          "event": {
+            "$arg": "event",
+            "type": "object",
+            "required": true,
+            "description": "Full event object per Google Calendar API; may include conferenceData"
+          }
+        },
+        "body": "{{arg.event}}",
+        "description": "Create a new calendar event (optionally with Google Meet)",
+        "requiresApproval": true
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "calendar.update_event",
+      "values": {
+        "method": "PUT",
+        "mode": "rest:put",
+        "endpoint": "https://www.googleapis.com/calendar/v3/calendars/{{arg.calendarId}}/events/{{arg.eventId}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json",
+          "Content-Type": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.gcal.authHeader" },
+          "calendarId": {
+            "$arg": "calendarId",
+            "type": "string",
+            "required": true
+          },
+          "eventId": {
+            "$arg": "eventId",
+            "description": "The event ID from the 'id' field (not 'eid' from htmlLink)",
+            "type": "string",
+            "required": true
+          },
+          "event": {
+            "$arg": "event",
+            "type": "object",
+            "required": true,
+            "description": "Complete replacement event object"
+          }
+        },
+        "body": "{{arg.event}}",
+        "description": "Replace an existing calendar event",
+        "requiresApproval": true
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "calendar.patch_event",
+      "values": {
+        "method": "PATCH",
+        "mode": "rest:patch",
+        "endpoint": "https://www.googleapis.com/calendar/v3/calendars/{{arg.calendarId}}/events/{{arg.eventId}}?conferenceDataVersion=1",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json",
+          "Content-Type": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.gcal.authHeader" },
+          "calendarId": {
+            "$arg": "calendarId",
+            "type": "string",
+            "required": true
+          },
+          "eventId": {
+            "$arg": "eventId",
+            "description": "The event ID from the 'id' field (not 'eid' from htmlLink)",
+            "type": "string",
+            "required": true
+          },
+          "patch": {
+            "$arg": "patch",
+            "type": "object",
+            "required": true,
+            "description": "Partial event update; may include conferenceData.createRequest"
+          }
+        },
+        "body": "{{arg.patch}}",
+        "description": "Partially update a calendar event (preferred for agents) (supports Google Meet creation)",
+        "requiresApproval": true
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "calendar.delete_event",
+      "values": {
+        "method": "DELETE",
+        "mode": "rest:delete",
+        "endpoint": "https://www.googleapis.com/calendar/v3/calendars/{{arg.calendarId}}/events/{{arg.eventId}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.gcal.authHeader" },
+          "calendarId": {
+            "$arg": "calendarId",
+            "type": "string",
+            "required": true
+          },
+          "eventId": {
+            "$arg": "eventId",
+            "description": "The event ID from the 'id' field (not 'eid' from htmlLink)",
+            "type": "string",
+            "required": true
+          }
+        },
+        "description": "Delete a calendar event",
+        "requiresApproval": true
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "calendar.respond_event",
+      "values": {
+        "method": "POST",
+        "mode": "rest:post",
+        "endpoint": "https://www.googleapis.com/calendar/v3/calendars/{{arg.calendarId}}/events/{{arg.eventId}}/respond",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.gcal.authHeader" },
+          "calendarId": {
+            "$arg": "calendarId",
+            "type": "string",
+            "required": true
+          },
+          "eventId": {
+            "$arg": "eventId",
+            "description": "The event ID from the 'id' field (not 'eid' from htmlLink)",
+            "type": "string",
+            "required": true
+          },
+          "responseStatus": {
+            "$arg": "responseStatus",
+            "type": "string",
+            "required": true,
+            "description": "accepted | declined | tentative"
+          }
+        },
+        "description": "Respond to a calendar event invitation",
+        "requiresApproval": true
+      }
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+-- Office Space: event orchestration across agents and users.
+--
+-- The org is a Workspace class. Sessions, routing, narratives,
+-- tools — all mounted by whoever needs them.
+-- This bootstrap provides the workspace machinery and core tools.
+
+class Workspace(name: string) while running = true {
+  org.name = name
+}
+
+-- Instantiate the workspace. Satisfies the class's where gate
+-- (matches_type(name, string)) and while gate (running = true).
+-- These are set here because they are immutable bootstrap facts.
+name = "workspace"
+running = true
+
+-- Sessions: key(user) derives path from user field
+Session = { user: string, env: string, tokenExpiry: number, heartbeat: number }
+
+-- Narratives: compressing views over event subsets
+Narrative = { watermark: number, summary: string, compressor: string }

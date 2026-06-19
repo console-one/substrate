@@ -1,0 +1,417 @@
+{
+  "version": "1.0",
+  "connectorId": "jira",
+  "apis": [
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "jira.search_issues",
+      "values": {
+        "method": "POST",
+        "mode": "rest:post",
+        "endpoint": "https://{{const.jira.baseUrl}}/rest/api/3/search/jql",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json",
+          "Content-Type": "application/json"
+        },
+        "body": "{\n  \"jql\": {{arg.jql}},\n  \"fields\": {{arg.fields}},\n  \"expand\": {{arg.expand}},\n  \"maxResults\": {{arg.maxResults}},\n  \"nextPageToken\": {{arg.nextPageToken}}\n}",
+        "bindings": {
+          "authHeader": { "$ref": "binding.jira.basicAuth" },
+          "jql": {
+            "$arg": "jql",
+            "description": "JQL query string (e.g., 'project = PROJ AND status = Open')",
+            "type": "string",
+            "required": true
+          },
+          "fields": {
+            "$arg": "fields",
+            "description": "Array of field names to return for each issue",
+            "type": "array",
+            "required": false,
+            "default": ["*all"]
+          },
+          "expand": {
+            "$arg": "expand",
+            "description": "Array of entities to expand in the response",
+            "type": "array",
+            "required": false
+          },
+          "maxResults": {
+            "$arg": "maxResults",
+            "description": "Maximum number of issues to return",
+            "type": "number",
+            "required": false,
+            "default": 50
+          },
+          "nextPageToken": {
+            "$arg": "nextPageToken",
+            "description": "Token for retrieving the next page of results",
+            "type": "string",
+            "required": false
+          }
+        },
+        "description": "Search for issues using JQL (Jira Query Language)"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "jira.get_issue",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://{{const.jira.baseUrl}}/rest/api/3/issue/{{arg.issueKey}}?fields={{arg.fields}}&expand={{arg.expand}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.jira.basicAuth" },
+          "issueKey": {
+            "$arg": "issueKey",
+            "description": "The issue key or ID (e.g., 'PROJ-123')",
+            "type": "string",
+            "required": true
+          },
+          "fields": {
+            "$arg": "fields",
+            "description": "Comma-separated list of fields to return",
+            "type": "string",
+            "required": false,
+            "default": "*all"
+          },
+          "expand": {
+            "$arg": "expand",
+            "description": "Comma-separated list of entities to expand",
+            "type": "string",
+            "required": false
+          }
+        },
+        "description": "Get details of a specific issue by key or ID"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "jira.get_issue_changelog",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://{{const.jira.baseUrl}}/rest/api/3/issue/{{arg.issueKey}}/changelog?startAt={{arg.startAt}}&maxResults={{arg.maxResults}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.jira.basicAuth" },
+          "issueKey": {
+            "$arg": "issueKey",
+            "description": "The issue key or ID (e.g., 'PROJ-123')",
+            "type": "string",
+            "required": true
+          },
+          "startAt": {
+            "$arg": "startAt",
+            "description": "Starting index for pagination",
+            "type": "number",
+            "required": false,
+            "default": 0
+          },
+          "maxResults": {
+            "$arg": "maxResults",
+            "description": "Maximum number of changelog entries to return",
+            "type": "number",
+            "required": false,
+            "default": 100
+          }
+        },
+        "description": "Get the changelog history for a specific issue"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "jira.list_projects",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://{{const.jira.baseUrl}}/rest/api/3/project/search?query={{arg.query}}&startAt={{arg.startAt}}&maxResults={{arg.maxResults}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.jira.basicAuth" },
+          "query": {
+            "$arg": "query",
+            "description": "Search query to filter projects by name or key",
+            "type": "string",
+            "required": false
+          },
+          "startAt": {
+            "$arg": "startAt",
+            "description": "Starting index for pagination",
+            "type": "number",
+            "required": false,
+            "default": 0
+          },
+          "maxResults": {
+            "$arg": "maxResults",
+            "description": "Maximum number of projects to return",
+            "type": "number",
+            "required": false,
+            "default": 50
+          }
+        },
+        "description": "Search and list projects with optional query filter"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "jira.get_project",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://{{const.jira.baseUrl}}/rest/api/3/project/{{arg.projectIdOrKey}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.jira.basicAuth" },
+          "projectIdOrKey": {
+            "$arg": "projectIdOrKey",
+            "description": "The project ID or key",
+            "type": "string",
+            "required": true
+          }
+        },
+        "description": "Get details of a specific project by ID or key"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "jira.list_issue_comments",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://{{const.jira.baseUrl}}/rest/api/3/issue/{{arg.issueKey}}/comment?startAt={{arg.startAt}}&maxResults={{arg.maxResults}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.jira.basicAuth" },
+          "issueKey": {
+            "$arg": "issueKey",
+            "description": "The issue key or ID (e.g., 'PROJ-123')",
+            "type": "string",
+            "required": true
+          },
+          "startAt": {
+            "$arg": "startAt",
+            "description": "Starting index for pagination",
+            "type": "number",
+            "required": false,
+            "default": 0
+          },
+          "maxResults": {
+            "$arg": "maxResults",
+            "description": "Maximum number of comments to return",
+            "type": "number",
+            "required": false,
+            "default": 50
+          }
+        },
+        "description": "List all comments on a specific issue"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "jira.users_assignable",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://{{const.jira.baseUrl}}/rest/api/3/user/assignable/search?project={{arg.projectKey}}&query={{arg.query}}&startAt={{arg.startAt}}&maxResults={{arg.maxResults}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.jira.basicAuth" },
+          "projectKey": {
+            "$arg": "projectKey",
+            "description": "The project key to search assignable users for",
+            "type": "string",
+            "required": true
+          },
+          "query": {
+            "$arg": "query",
+            "description": "Search query to filter users by name or email",
+            "type": "string",
+            "required": false
+          },
+          "startAt": {
+            "$arg": "startAt",
+            "description": "Starting index for pagination",
+            "type": "number",
+            "required": false,
+            "default": 0
+          },
+          "maxResults": {
+            "$arg": "maxResults",
+            "description": "Maximum number of users to return",
+            "type": "number",
+            "required": false,
+            "default": 50
+          }
+        },
+        "description": "Search for users that can be assigned to issues in a project"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "jira.myself",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://{{const.jira.baseUrl}}/rest/api/3/myself",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.jira.basicAuth" }
+        },
+        "description": "Get details of the currently authenticated user"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "jira.agile_list_boards",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://{{const.jira.baseUrl}}/rest/agile/1.0/board?projectKeyOrId={{arg.projectKeyOrId}}&type={{arg.type}}&startAt={{arg.startAt}}&maxResults={{arg.maxResults}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.jira.basicAuth" },
+          "projectKeyOrId": {
+            "$arg": "projectKeyOrId",
+            "description": "Filter boards by project key or ID",
+            "type": "string",
+            "required": false
+          },
+          "type": {
+            "$arg": "type",
+            "description": "Filter by board type: 'scrum' or 'kanban'",
+            "type": "string",
+            "required": false
+          },
+          "startAt": {
+            "$arg": "startAt",
+            "description": "Starting index for pagination",
+            "type": "number",
+            "required": false,
+            "default": 0
+          },
+          "maxResults": {
+            "$arg": "maxResults",
+            "description": "Maximum number of boards to return",
+            "type": "number",
+            "required": false,
+            "default": 50
+          }
+        },
+        "description": "List agile boards with optional project and type filters"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "jira.agile_list_sprints",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://{{const.jira.baseUrl}}/rest/agile/1.0/board/{{arg.boardId}}/sprint?state={{arg.state}}&startAt={{arg.startAt}}&maxResults={{arg.maxResults}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.jira.basicAuth" },
+          "boardId": {
+            "$arg": "boardId",
+            "description": "The board ID to list sprints for",
+            "type": "number",
+            "required": true
+          },
+          "state": {
+            "$arg": "state",
+            "description": "Filter by sprint state: 'active', 'closed', or 'future'",
+            "type": "string",
+            "required": false
+          },
+          "startAt": {
+            "$arg": "startAt",
+            "description": "Starting index for pagination",
+            "type": "number",
+            "required": false,
+            "default": 0
+          },
+          "maxResults": {
+            "$arg": "maxResults",
+            "description": "Maximum number of sprints to return",
+            "type": "number",
+            "required": false,
+            "default": 50
+          }
+        },
+        "description": "List sprints for a specific agile board"
+      }
+    },
+    {
+      "schematictype": { "typename": "rest" },
+      "id": "jira.agile_sprint_issues",
+      "values": {
+        "method": "GET",
+        "mode": "rest:get",
+        "endpoint": "https://{{const.jira.baseUrl}}/rest/agile/1.0/sprint/{{arg.sprintId}}/issue?startAt={{arg.startAt}}&maxResults={{arg.maxResults}}&fields={{arg.fields}}",
+        "headers": {
+          "Authorization": "{{ref.authHeader}}",
+          "Accept": "application/json"
+        },
+        "bindings": {
+          "authHeader": { "$ref": "binding.jira.basicAuth" },
+          "sprintId": {
+            "$arg": "sprintId",
+            "description": "The sprint ID to list issues for",
+            "type": "number",
+            "required": true
+          },
+          "fields": {
+            "$arg": "fields",
+            "description": "Comma-separated list of fields to return for each issue",
+            "type": "string",
+            "required": false,
+            "default": "*all"
+          },
+          "startAt": {
+            "$arg": "startAt",
+            "description": "Starting index for pagination",
+            "type": "number",
+            "required": false,
+            "default": 0
+          },
+          "maxResults": {
+            "$arg": "maxResults",
+            "description": "Maximum number of issues to return",
+            "type": "number",
+            "required": false,
+            "default": 50
+          }
+        },
+        "description": "List all issues in a specific sprint"
+      }
+    }
+  ]
+}
