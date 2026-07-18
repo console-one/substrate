@@ -18,8 +18,8 @@
 
 import { OfficeSpaceClient } from '@console-one/sequenceutils/transport';
 import type { ClientEvent } from '@console-one/sequenceutils/transport';
-import { NodeStorage } from '@console-one/sequenceutils/transport';
-import type { IStorage } from '@console-one/sequenceutils/transport';
+import { NodeStorage } from '@console-one/sequence/v2';
+import type { IStorage } from '@console-one/sequence/v2';
 import { join } from 'path';
 import { homedir } from 'os';
 import { writeFileSync, unlinkSync, existsSync, mkdirSync } from 'fs';

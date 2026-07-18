@@ -17,7 +17,7 @@ import {
   type KitManifest,
   type KitResolver,
 } from '../env/installer';
-import { NodeStorage } from '@console-one/sequenceutils/transport';
+import { NodeStorage } from '@console-one/sequence/v2';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { rmSync, mkdirSync } from 'fs';

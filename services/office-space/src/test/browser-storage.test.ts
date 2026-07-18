@@ -8,7 +8,7 @@
  * the three IStorage methods that actually get called at runtime.
  */
 
-import { BrowserStorage, resetAllBrowserStorage } from '@console-one/sequenceutils/transport';
+import { BrowserStorage, resetAllBrowserStorage } from '@console-one/sequence/v2';
 
 describe('BrowserStorage (memory backend)', () => {
   afterEach(() => {

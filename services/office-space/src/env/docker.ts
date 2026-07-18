@@ -28,8 +28,8 @@
 
 import { ContextGraphServer } from '../office-space-server.js';
 import type { ServerConfig, PriorSnapshot } from '../office-space-server.js';
-import { NodeStorage } from '@console-one/sequenceutils/transport';
-import type { IStorage } from '@console-one/sequenceutils/transport';
+import { NodeStorage } from '@console-one/sequence/v2';
+import type { IStorage } from '@console-one/sequence/v2';
 import { existsSync, mkdirSync } from 'fs';
 import { dirname } from 'path';
 

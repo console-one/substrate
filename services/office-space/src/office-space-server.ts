@@ -14,10 +14,13 @@
 
 import {
   ContextGraphServer as BaseServer,
-  NodeStorage,
   type ServerConfig as BaseConfig,
   type PriorSnapshot,
 } from '@console-one/sequenceutils/transport';
+// Storage adapters live on the v2 kernel surface since deletion-ledger
+// stage 3; the IStorage contract is structurally identical, so v2
+// instances flow into the (still-v1) transport server unchanged.
+import { NodeStorage } from '@console-one/sequence/v2';
 import { registerLabelRules } from '@console-one/sequenceutils/policies';
 import { registerBaseTools } from '@console-one/sequenceutils/tools';
 import type { Sequence } from '@console-one/sequence';

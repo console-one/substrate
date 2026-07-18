@@ -34,8 +34,8 @@
 
 import { OfficeSpaceClient } from '@console-one/sequenceutils/transport';
 import type { ClientEvent, WebSocketCtor } from '@console-one/sequenceutils/transport';
-import { BrowserStorage } from '@console-one/sequenceutils/transport';
-import type { BrowserStorageConfig } from '@console-one/sequenceutils/transport';
+import { BrowserStorage } from '@console-one/sequence/v2';
+import type { BrowserStorageConfig } from '@console-one/sequence/v2';
 import { registerStdlibPanels } from '@console-one/sequenceutils/transport';
 
 export interface BrowserEnvConfig {

@@ -26,9 +26,10 @@ import { runDockerEnv, registerSignalHandlers as registerDockerSignalHandlers } 
 import { lambdaHandler, type LambdaEvent } from './env/lambda';
 import { runConsole } from './console';
 
-// Public API re-exports. Transport primitives live in
-// @console-one/sequenceutils/transport; this package is the product
-// composition surface.
+// Public API re-exports. The transport client/server still live in
+// @console-one/sequenceutils/transport (v1-walker-bound — deletion-
+// ledger stage-4 scope); the storage contract moved to the v2 kernel
+// surface at stage 3. This package is the product composition surface.
 export {
   OfficeSpaceClient,
   wrapClient,
@@ -38,8 +39,8 @@ export type {
   ClientEvent,
   IWebSocket,
   WebSocketCtor,
-  IStorage,
 } from '@console-one/sequenceutils/transport';
+export type { IStorage } from '@console-one/sequence/v2';
 export { ContextGraphServer } from './office-space-server';
 export type { ServerConfig, PriorSnapshot } from './office-space-server';
 import { readFileSync } from 'fs';

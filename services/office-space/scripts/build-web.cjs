@@ -44,6 +44,18 @@ const config = {
     // Node `path` — same story, `join()` guarded out but has to
     // import successfully.
     'path': path.join(STUBS, 'path-stub.ts'),
+    // Node `http` — the transport index re-exports ContextGraphServer,
+    // which imports createServer. Never started in the browser.
+    'http': path.join(STUBS, 'http-stub.ts'),
+    // Node `crypto` — HMAC session tokens (sequenceutils auth + the
+    // v2 stdlib). Minting/validation is server-side only.
+    'crypto': path.join(STUBS, 'crypto-stub.ts'),
+    // @console-one/sequence/v2 lazy-imports the node: forms inside
+    // fsnode.*/proc.exec impls — unreachable in the browser, but
+    // esbuild resolves the specifiers at bundle time.
+    'node:fs': path.join(STUBS, 'fs-stub.ts'),
+    'node:path': path.join(STUBS, 'path-stub.ts'),
+    'node:child_process': path.join(STUBS, 'child-process-stub.ts'),
   },
   // `better-sqlite3` is a native Node addon used by the server-side
   // persistence layer. Nothing in the browser entry's import graph

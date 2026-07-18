@@ -16,13 +16,18 @@
  */
 
 import { Sequence, partitionOf } from '@console-one/sequence';
+// The pure primitives moved to the v2 kernel surface (deletion-ledger
+// stage 3); the canonicalization is byte-identical (U+001F-delimited
+// HMAC-SHA256), so v2-minted tokens validate against v1-wired caps and
+// vice versa. registerAuthCaps is the v1 mount-based wiring and stays
+// with the v1 transport until the server moves (stage 4).
 import {
   mintSessionToken,
   validateSessionToken,
   generateTokenSecret,
-  registerAuthCaps,
   type SessionToken,
-} from '@console-one/sequenceutils/transport';
+} from '@console-one/sequence/v2';
+import { registerAuthCaps } from '@console-one/sequenceutils/transport';
 
 describe('session token — mint/validate primitive', () => {
   const secret = 'deadbeef'.repeat(16); // 128-char hex, fixed for reproducibility

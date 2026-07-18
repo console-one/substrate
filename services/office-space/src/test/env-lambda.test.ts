@@ -23,7 +23,7 @@
 
 import { ContextGraphServer } from '../office-space-server.js';
 import { runLambdaEnv, lambdaHandler } from '../env/lambda';
-import { S3Storage, resetAllS3Buckets } from '@console-one/sequenceutils/transport';
+import { S3Storage, resetAllS3Buckets } from '@console-one/sequence/v2';
 import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';

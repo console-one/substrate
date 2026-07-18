@@ -20,6 +20,7 @@ module.exports = {
   },
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',
+    '^@console-one/sequence/v2$': '<rootDir>/../../node_modules/@console-one/sequence/dist/src-v2/index.js',
     '^@console-one/sequence$': '<rootDir>/../../node_modules/@console-one/sequence/dist/src/index.js',
     '^@console-one/sequenceutils/transport$': '<rootDir>/../../node_modules/@console-one/sequenceutils/dist/transport/index.js',
     '^@console-one/sequenceutils/policies$': '<rootDir>/../../node_modules/@console-one/sequenceutils/dist/policies/index.js',

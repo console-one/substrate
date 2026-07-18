@@ -36,7 +36,7 @@
 
 import type { Sequence } from '@console-one/sequence';
 import { receive } from '@console-one/sequence';
-import type { IStorage } from '@console-one/sequenceutils/transport';
+import type { IStorage } from '@console-one/sequence/v2';
 
 // ═══════════════════════════════════════════════════════════════════════
 // TYPES

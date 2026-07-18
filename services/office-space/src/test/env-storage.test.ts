@@ -8,7 +8,7 @@
  * properties every Node-backed env will depend on.
  */
 
-import { NodeStorage } from '@console-one/sequenceutils/transport';
+import { NodeStorage } from '@console-one/sequence/v2';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { rmSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 'fs';

@@ -19,7 +19,7 @@
 
 import { ContextGraphServer } from '../office-space-server.js';
 import { OfficeSpaceClient } from '@console-one/sequenceutils/transport';
-import { mintSessionToken, validateSessionToken, type SessionToken } from '@console-one/sequenceutils/transport';
+import { mintSessionToken, validateSessionToken, type SessionToken } from '@console-one/sequence/v2';
 import { mkdtempSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
