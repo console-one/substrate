@@ -41,8 +41,13 @@ a capability whose excluded verb the kernel refuses **forever** · local
 SQL hydration whose extent is a fact · an FT frame whose reliability
 numbers are **observed posteriors of real local calls** (never authored
 — the connector is a labeled simulator, the measurements are not) · a
-learning loop where the next frame's annotations have moved · and a
-ledger that fails loudly on the two beats not built yet. The full spec:
+learning loop where the next frame's annotations have moved · two
+frames merged into one surface (conflicts named, never silently
+overwritten) · and the closure: a re-vended grant that can only narrow
+and tighten, with the full chain reported back to its origin. All 12
+beats are enforced; the ratchet ledger that once held the unbuilt ones
+is empty — and stays wired so any regression, or any future beat, fails
+loudly. The full spec:
 [`specs/docs/STORYBOARD_WALK.md`](specs/docs/STORYBOARD_WALK.md).
 
 > npm-standalone install is pending the next registry publish of

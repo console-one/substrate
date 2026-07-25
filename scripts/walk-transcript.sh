@@ -12,4 +12,5 @@
 set -euo pipefail
 cd "$(dirname "$0")/../services/office-space"
 node bin/office-space.cjs walk --scripted \
-  | sed -E 's/~survival\(exp, [0-9.eE+-]+\)/~survival(exp, OBSERVED)/g'
+  | sed -E 's/~survival\(exp, [0-9.eE+-]+\)/~survival(exp, OBSERVED)/g' \
+  | sed -E 's/(_latency = \{ shape: [0-9]+, rate: )[0-9.eE+-]+/\1OBSERVED/g'

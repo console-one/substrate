@@ -15,10 +15,10 @@
  * not a determinism leak — no assertion depends on their digits).
  */
 
-import type { Sequence, VendResult } from '@console-one/sequence/v2';
+import type { Sequence, VendResult, MergeFramesResult } from '@console-one/sequence/v2';
 import {
-  Sequence as SequenceV2, vend, revend, callThroughSession, receiveDocument,
-  electLabel, timeHorizon,
+  Sequence as SequenceV2, vend, revend, callThroughSession, continueSession,
+  receiveDocument, mergeFrames, electLabel, timeHorizon,
 } from '@console-one/sequence/v2';
 import { MailboxSim } from './mailbox-sim';
 import { browseConnectors, installMailboxConnector, MAILBOX_MANIFEST_FT } from './connector';
@@ -39,9 +39,13 @@ export type WalkContext = {
   frame?: VendResult;
   frameBefore?: string;
   reVended?: string;
+  secondFrame?: VendResult;
+  merged?: MergeFramesResult;
   bTools?: string[];
+  bSessionId?: string;
   cTools?: string[];
   cValidUntil?: number;
+  cChain?: string;
 };
 
 export function newWalkContext(ask: WalkContext['ask']): WalkContext {
@@ -351,20 +355,36 @@ export const BEATS: Beat[] = [
   {
     n: 11,
     title: 'Point a second office (or a bare planner) at TWO vended frames — one merged surface',
-    run: async () => [
-      'LEDGERED: frame-level merge (compose over two vended documents —',
-      'same tool → tightest consistent; genuine conflict → named never)',
-      'is not built. Kernel scenario V17 tracks it.',
-    ],
+    run: async (ctx) => {
+      // A SECOND frame from the same office — vended after the agent's
+      // call, so its posteriors carry more evidence than the first.
+      ctx.secondFrame = vend(ctx.office, { query: CAPABILITY, ttlMs: 50_000 });
+      ctx.merged = await mergeFrames([ctx.frame!.text, ctx.secondFrame.text]);
+      const line = (t: string, p: string) => t.split('\n').find((l) => l.startsWith(p)) ?? '';
+      return [
+        `merged ${2} frames → one surface: ${ctx.merged.tools.join(', ')}`,
+        `temporal meet: ${line(ctx.merged.text, `${CAPABILITY}.search._validUntil`)} (the tighter of ${ctx.frame!.expiresAt} / ${ctx.secondFrame.expiresAt})`,
+        `more-evidenced posterior superseded: ${line(ctx.merged.text, `${CAPABILITY}.search._reliability`)}`,
+        `named conflicts: ${ctx.merged.conflicts.length === 0 ? 'none' : ctx.merged.conflicts.join('; ')}`,
+        'a genuine contradiction would be NAMED and excluded — never silently overwritten',
+      ];
+    },
     accept: async (ctx) => {
-      const api = (await import('@console-one/sequence/v2')) as unknown as {
-        mergeFrames?: (docs: string[]) => { text: string; conflicts: string[] };
-      };
-      assert(typeof api.mergeFrames === 'function', 'mergeFrames is not built (V17)');
-      const second = vend(ctx.office, { query: CAPABILITY, ttlMs: 50_000 });
-      const merged = api.mergeFrames!([ctx.frame!.text, second.text]);
-      assert(merged.text.includes(`${CAPABILITY}.search._validUntil = ${second.expiresAt}`),
+      const merged = ctx.merged!;
+      assert(merged.tools.includes(`${CAPABILITY}.search`), 'merged surface lost a tool');
+      // Tightest consistent: the shorter validity wins.
+      assert(merged.text.includes(`${CAPABILITY}.search._validUntil = ${ctx.secondFrame!.expiresAt}`),
         'merge did not take the tightest validity');
+      assert(merged.conflicts.length === 0,
+        `unexpected conflicts: ${merged.conflicts.join('; ')}`);
+      // The more-evidenced reliability (the post-agent-call frame) won.
+      const rel = ctx.office.get(`${CAPABILITY}.search._prior.reliability`) as { alpha: number; beta: number };
+      assert(merged.text.includes(`${CAPABILITY}.search._reliability = { alpha: ${rel.alpha}, beta: ${rel.beta} }`),
+        'merge did not keep the more-evidenced posterior');
+      // And the merged frame is itself receivable — same standing guard.
+      const rx = new SequenceV2(() => ctx.clock.t);
+      const rr = await receiveDocument(rx, merged.text);
+      assert(rr.errors.length === 0, `merged frame does not receive: ${rr.errors.join('; ')}`);
     },
   },
   {
@@ -376,16 +396,26 @@ export const BEATS: Beat[] = [
       assert(rb.errors.length === 0, `B could not install A's frame: ${rb.errors.join('; ')}`);
       ctx.bTools = rb.tools.filter((t) => !t.startsWith('_'));
       const bVend = vend(b, { query: `${CAPABILITY}.search`, ttlMs: 3_600_000 });
+      ctx.bSessionId = bVend.sessionId;
+      // The chain reports: B's vend owes every upstream session word of
+      // the re-vend; the WALK is the host transport and delivers them.
+      for (const report of bVend.chainReports) {
+        const delivered = await continueSession(ctx.office, report.session, report.ft);
+        assert(delivered.ok, `chain report refused by ${report.session}`);
+      }
       const c = new SequenceV2(() => ctx.clock.t);
       const rc = await receiveDocument(c, bVend.text);
       assert(rc.errors.length === 0, `C could not install B's re-vend: ${rc.errors.join('; ')}`);
       ctx.cTools = rc.tools.filter((t) => !t.startsWith('_'));
+      ctx.cChain = c.get(`${CAPABILITY}.search._origin.chain`) as string | undefined;
       const m = new RegExp(`${CAPABILITY}\\.search\\._validUntil = (\\d+)`).exec(bVend.text);
       ctx.cValidUntil = m ? Number(m[1]) : undefined;
       return [
         `B installed A's frame (vend ∘ receive = install): ${ctx.bTools.join(', ')}`,
         `B re-vended a NARROWED surface to C: ${ctx.cTools.join(', ')}`,
         `temporal meet: C's grant expires ${ctx.cValidUntil} ≤ A's ${ctx.frame!.expiresAt}: ${ctx.cValidUntil! <= ctx.frame!.expiresAt}`,
+        `C's provenance chain: "${ctx.cChain}"`,
+        `A's chain view: _sessions.${ctx.frame!.sessionId}.chain → ${JSON.stringify(ctx.office.keys(`_sessions.${ctx.frame!.sessionId}.chain`))}`,
       ];
     },
     accept: async (ctx) => {
@@ -400,10 +430,12 @@ export const BEATS: Beat[] = [
       // Temporal meet: C's frame expires no later than A's session.
       assert(ctx.cValidUntil !== undefined && ctx.cValidUntil <= ctx.frame!.expiresAt,
         'C\'s grant outlives A\'s session');
-      // Chain-grained provenance: A's usage view shows the full chain.
-      // NOT BUILT (kernel scenario V19) — this is what ledgers beat 12.
-      const chain = ctx.office.get(`_sessions.${ctx.frame!.sessionId}.chain`);
-      assert(chain !== undefined, 'chain-grained provenance is not built (V19)');
+      // Chain-grained provenance: A sees the re-vend at the capability
+      // grain, and C holds the FULL chain.
+      const links = ctx.office.keys(`_sessions.${ctx.frame!.sessionId}.chain`);
+      assert(links.includes(ctx.bSessionId!), 'A does not see B\'s re-vend in its chain view');
+      assert(ctx.cChain === `${ctx.frame!.sessionId} ${ctx.bSessionId}`,
+        `C's chain is "${ctx.cChain}", expected the full A→B lineage`);
     },
   },
 ];

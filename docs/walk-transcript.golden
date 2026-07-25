@@ -54,6 +54,7 @@ save emails locally for speed? (offer derived from: search, get) [Y/n] [scripted
   personalemail.get = (id: string) -> { from: string, subject: string, body: string, labels: string } ~survival(exp, OBSERVED)
   personalemail.get._description = "Fetch one of my messages. Team context: [[narratives.team]]"
   personalemail.get._reliability = { alpha: 25, beta: 1 }
+  personalemail.get._latency = { shape: 25, rate: OBSERVED }
   personalemail.get._validUntil = 1000100000
   
   personalemail.labels = () -> { labels: string }
@@ -63,6 +64,7 @@ save emails locally for speed? (offer derived from: search, get) [Y/n] [scripted
   personalemail.search = (q: string) -> { ids: [string] } ~survival(exp, OBSERVED)
   personalemail.search._description = "Search my personal mail. Owner: [[narratives.self]]"
   personalemail.search._reliability = { alpha: 3, beta: 1 }
+  personalemail.search._latency = { shape: 3, rate: OBSERVED }
   personalemail.search._validUntil = 1000100000
   
   _sessions.sgjdgxs0.expiresAt = 1000100000
@@ -85,17 +87,21 @@ save emails locally for speed? (offer derived from: search, get) [Y/n] [scripted
   each fact: { tool, at, ok } — session-stamped, key-free
   ✓ acceptance holds
 
-━━ beat 11 ─ Point a second office (or a bare planner) at TWO vended frames — one merged surface   [LEDGERED — expected to fail]
-  LEDGERED: frame-level merge (compose over two vended documents —
-  same tool → tightest consistent; genuine conflict → named never)
-  is not built. Kernel scenario V17 tracks it.
-  ▢ still unbuilt (ledgered): mergeFrames is not built (V17)
+━━ beat 11 ─ Point a second office (or a bare planner) at TWO vended frames — one merged surface
+  merged 2 frames → one surface: personalemail.get, personalemail.labels, personalemail.search
+  temporal meet: personalemail.search._validUntil = 1000050000 (the tighter of 1000100000 / 1000050000)
+  more-evidenced posterior superseded: personalemail.search._reliability = { alpha: 4, beta: 1 }
+  named conflicts: none
+  a genuine contradiction would be NAMED and excluded — never silently overwritten
+  ✓ acceptance holds
 
-━━ beat 12 ─ Office B installs A's vended frame AS A CONNECTOR, narrows it, re-vends to C — closure   [LEDGERED — expected to fail]
+━━ beat 12 ─ Office B installs A's vended frame AS A CONNECTOR, narrows it, re-vends to C — closure
   B installed A's frame (vend ∘ receive = install): personalemail.get, personalemail.labels, personalemail.search
   B re-vended a NARROWED surface to C: personalemail.search
   temporal meet: C's grant expires 1000100000 ≤ A's 1000100000: true
-  ▢ still unbuilt (ledgered): chain-grained provenance is not built (V19)
+  C's provenance chain: "sgjdgxs0 sgjdgxs2"
+  A's chain view: _sessions.sgjdgxs0.chain → ["sgjdgxs2"]
+  ✓ acceptance holds
 
 ━━ the ledger
   beat 1: PASS
@@ -108,7 +114,7 @@ save emails locally for speed? (offer derived from: search, get) [Y/n] [scripted
   beat 8: PASS
   beat 9: PASS
   beat 10: PASS
-  beat 11: LEDGERED (still failing, as recorded)
-  beat 12: LEDGERED (still failing, as recorded)
+  beat 11: PASS
+  beat 12: PASS
 
 walk complete: every built beat enforced, every unbuilt beat loud.

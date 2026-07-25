@@ -29,18 +29,23 @@ number would poison the whole thesis, so there are none.
 | 8 | `office-space walk` frames the capability (`--maxtokens 2000 --duration 100s` shape) | Budget-true · observed annotations only · every load-bearing fact a receivable statement (strip all `--` comments → a fresh kernel reconstructs the same tools, expiry and reliability) | **PASS** |
 | 9 | An agent (fixed script, labeled) calls a tool through the frame | Real observation → conjugate update → the NEXT frame's annotations have moved | **PASS** |
 | 10 | "Where was my mail used, for what?" | Usage queryable at the capability grain, key-free | **PASS** |
-| 11 | Two vended frames → one merged surface | Merge is compose: same tool → tightest consistent; genuine conflict → named `never` | **LEDGERED** (kernel V17) |
-| 12 | Office B installs A's frame AS A CONNECTOR, narrows, re-vends to C | Closure: monotone narrowing ✓ and temporal meet ✓ hold today; chain-grained provenance ledgers the beat | **LEDGERED** (kernel V19) |
+| 11 | Two vended frames → one merged surface | Merge is compose: same tool → tightest consistent; genuine conflict → named, never silently overwritten; posteriors merge by more-evidenced-supersedes | **PASS** |
+| 12 | Office B installs A's frame AS A CONNECTOR, narrows, re-vends to C | Closure: monotone narrowing ✓ temporal meet ✓ chain-grained provenance ✓ (B's re-vend reports to A's session; C holds the full lineage) | **PASS** |
 
 ## The ratchet
 
 `services/office-space/src/walk/storyboard-ledger.ts` lists the beats
-known not to pass. The contract, enforced by the walk's exit code and
-by `src/test/storyboard-walk.test.ts`:
+known not to pass — **empty as of 2026-07-25: all 12 beats are
+enforced**. The contract, enforced by the walk's exit code and by
+`src/test/storyboard-walk.test.ts`:
 
 - a beat NOT in the ledger must pass — regression guard;
 - a ledgered beat that STARTS passing **fails the suite until struck**
   — progress is recorded, never silent.
+
+The kernel's own remaining gaps (refinement round-trip, type-expansion
+tokens — sequence `specs/impl/VENDING_LEDGER.json` V14/V16) refine
+beats already passing at the office grain.
 
 ## The standing guard
 
@@ -55,5 +60,6 @@ acceptance.
 
 The kernel scenarios live in the sequence repo:
 `src-v2/test/vending-endstate.test.ts` + `specs/impl/VENDING_LEDGER.json`
-— same ratchet contract, kernel grain (V13–V17, V19 are the open gaps
-that ledger beats 11/12 and the deeper enforcement refinements).
+— same ratchet contract, kernel grain. V13 (expiry enforced at the
+offering), V15 (kernel-automatic observation), V17 (frame merge) and
+V19 (chain provenance) were struck 2026-07-25; V14 and V16 remain open.

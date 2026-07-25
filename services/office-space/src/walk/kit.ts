@@ -160,11 +160,15 @@ export function createKit(seq: Sequence, spec: KitSpec): KitResult {
     // document, a type, or a usage fact.
     const raw = seq.impls.get(srcPath);
     if (!raw) continue;
-    seq.impls.set(dstPath, measured(seq, spec.capability, dstPath, (args) => {
+    const wrapped = measured(seq, spec.capability, dstPath, (args) => {
       const key = seq.get(spec.keyAlias);
       if (typeof key !== 'string') throw new Error(`key alias ${spec.keyAlias} is not filled`);
       return raw({ ...args, _auth: key });
-    }));
+    });
+    // The wrapper observes; the kernel's session call path must stand
+    // down (observes marker) — one real observation never counts twice.
+    (wrapped as { observes?: boolean }).observes = true;
+    seq.impls.set(dstPath, wrapped);
     tools.push(dstPath);
   }
   return { tools, excluded };
