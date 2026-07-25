@@ -43,7 +43,9 @@ jobs:
       - name: Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # 22+: the transport tests use the global WebSocket, which
+          # Node exposes by default from 22 (absent on 20).
+          node-version: 22
 
       - name: Build the kernel
         working-directory: sequence
