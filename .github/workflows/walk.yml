@@ -28,7 +28,7 @@ jobs:
         with:
           path: substrate
 
-      - name: Checkout the sibling kernel (file: dep layout)
+      - name: "Checkout the sibling kernel (file: dep layout)"
         uses: actions/checkout@v4
         with:
           repository: console-one/sequence
