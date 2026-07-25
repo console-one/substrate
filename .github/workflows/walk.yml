@@ -71,6 +71,10 @@ jobs:
           bash scripts/walk-transcript.sh > /tmp/walk-transcript.txt
           diff /tmp/walk-transcript.txt docs/walk-transcript.golden
 
+      - name: ffmpeg for vhs (main only)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
       - name: Regenerate the GIF from the tape (main only)
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: charmbracelet/vhs-action@v2

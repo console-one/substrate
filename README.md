@@ -23,7 +23,7 @@ The fastest way to understand what this substrate does is to walk the
 priced, accountable:
 
 ```bash
-# the repo consumes its sibling checkouts via file: deps
+# Node 22+ · the repo consumes its sibling checkouts via file: deps
 git clone https://github.com/console-one/sequence
 git clone https://github.com/console-one/sequenceutils
 git clone https://github.com/console-one/substrate
