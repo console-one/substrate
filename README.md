@@ -23,10 +23,12 @@ The fastest way to understand what this substrate does is to walk the
 priced, accountable:
 
 ```bash
-# the repo consumes its sibling kernel checkout via file: deps
+# the repo consumes its sibling checkouts via file: deps
 git clone https://github.com/console-one/sequence
+git clone https://github.com/console-one/sequenceutils
 git clone https://github.com/console-one/substrate
-cd sequence && npm install && npm run build && cd ..
+cd sequence && npm install && cd ..            # prepare script builds dist/
+cd sequenceutils && npm install && npm run build && cd ..
 cd substrate && npm install
 cd services/office-space
 node bin/office-space.cjs walk              # interactive, one beat at a time

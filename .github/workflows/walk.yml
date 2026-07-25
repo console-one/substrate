@@ -34,6 +34,12 @@ jobs:
           repository: console-one/sequence
           path: sequence
 
+      - name: "Checkout the sibling runtime (file: dep layout)"
+        uses: actions/checkout@v4
+        with:
+          repository: console-one/sequenceutils
+          path: sequenceutils
+
       - name: Node
         uses: actions/setup-node@v4
         with:
@@ -42,6 +48,12 @@ jobs:
       - name: Build the kernel
         working-directory: sequence
         run: npm ci   # prepare → tsc build → dist/ (what substrate consumes)
+
+      - name: Build the runtime
+        working-directory: sequenceutils
+        run: |
+          npm ci
+          npm run build
 
       - name: Install substrate
         working-directory: substrate
