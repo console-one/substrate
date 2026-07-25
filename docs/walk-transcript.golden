@@ -51,7 +51,7 @@ save emails locally for speed? (offer derived from: search, get) [Y/n] [scripted
   narratives.team = "The mail crew is a four-person team that triages a shared support inbox covering invoices, renewals, releases, onboarding and retros. We answer within a day, star anything billing-related, archive aggressively, and never send from automation without a human in the loop. Escalations go to whoever is on point that week."
   narratives.self = "I am the developer on the mail crew who owns the billing label and the renewal follow-ups. I prefer terse, code-anchored summaries. I want agents to read and organize my personal mail — search it, fetch it, label it — but composing or sending mail stays with me; that boundary is permanent, not a phase."
   
-  personalemail.get = (id: string) -> { from: string, subject: string, body: string, labels: string } ~survival(exp, OBSERVED)
+  personalemail.get = (id: string /^m/) -> { from: string, subject: string, body: string, labels: string } ~survival(exp, OBSERVED)
   personalemail.get._description = "Fetch one of my messages. Team context: [[narratives.team]]"
   personalemail.get._reliability = { alpha: 25, beta: 1 }
   personalemail.get._latency = { shape: 25, rate: OBSERVED }
@@ -74,6 +74,7 @@ save emails locally for speed? (offer derived from: search, get) [Y/n] [scripted
   ✓ acceptance holds
 
 ━━ beat 9 ─ An agent calls a tool through the frame — and the NEXT frame's annotations have moved
+  agent (scripted): personalemail.get({ id: "x999" }) → REFUSED (invalid-args: id no match /^m/) — refinements enforce at the call
   agent (scripted): personalemail.search({ q: "renewal" }) → {"ids":["m005","m011","m017","m023"]}
   observation recorded: samples 2 → 3
   frame annotation before: personalemail.search = (q: string) -> { ids: [string] } ~survival(exp, OBSERVED)

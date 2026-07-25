@@ -60,6 +60,8 @@ acceptance.
 
 The kernel scenarios live in the sequence repo:
 `src-v2/test/vending-endstate.test.ts` + `specs/impl/VENDING_LEDGER.json`
-— same ratchet contract, kernel grain. V13 (expiry enforced at the
-offering), V15 (kernel-automatic observation), V17 (frame merge) and
-V19 (chain provenance) were struck 2026-07-25; V14 and V16 remain open.
+— same ratchet contract, kernel grain. **Both ledgers are empty as of
+2026-07-25**: V13–V19 all struck (expiry at the offering, refinement
+round-trip enforced at the call, kernel-automatic observation,
+type-expansion stubs, frame merge, chain provenance). The ratchets
+stay wired for whatever comes next.

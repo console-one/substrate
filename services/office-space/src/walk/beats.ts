@@ -298,6 +298,13 @@ export const BEATS: Beat[] = [
     run: async (ctx) => {
       // OPERATOR-SCRIPTED agent (fixed script, not model cognition):
       const before = (ctx.office.get(`${CAPABILITY}.search._prior.latency`) as { samples: number }).samples;
+      // The frame's types are not decoration: a call violating the
+      // manifest's refinement (message ids match /^m/) is refused by
+      // name before the connector ever runs — and is NOT observed (a
+      // caller's type error is not the endpoint's unreliability).
+      const refused = await callThroughSession(ctx.office, ctx.frame!.sessionId, `${CAPABILITY}.get`, { id: 'x999' });
+      assert(!refused.ok && (refused as { reason: string }).reason.includes('invalid-args'),
+        'the refinement did not enforce at the call');
       const call = await callThroughSession(ctx.office, ctx.frame!.sessionId, `${CAPABILITY}.search`, { q: 'renewal' });
       assert(call.ok, `agent call refused: ${JSON.stringify(call)}`);
       const rv = revend(ctx.office, ctx.frame!.sessionId, { query: CAPABILITY });
@@ -306,6 +313,7 @@ export const BEATS: Beat[] = [
       const after = (ctx.office.get(`${CAPABILITY}.search._prior.latency`) as { samples: number }).samples;
       const line = (t: string) => t.split('\n').find((l) => l.startsWith(`${CAPABILITY}.search = `)) ?? '';
       return [
+        `agent (scripted): ${CAPABILITY}.get({ id: "x999" }) → REFUSED (${(refused as { reason: string }).reason}) — refinements enforce at the call`,
         `agent (scripted): ${CAPABILITY}.search({ q: "renewal" }) → ${JSON.stringify(call.ok && call.value)}`,
         `observation recorded: samples ${before} → ${after}`,
         `frame annotation before: ${line(ctx.frameBefore!)}`,

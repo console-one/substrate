@@ -30,7 +30,7 @@ _connectors.mailbox.apis.send = { cacheable: false, hydratable: false, ttlMs: 0,
 
 mailbox.search = (q: string) -> { ids: [string] }
 mailbox.search._description = "Search messages by subject/body substring."
-mailbox.get = (id: string) -> { from: string, subject: string, body: string, labels: string }
+mailbox.get = (id: string | id MATCHES /^m/) -> { from: string, subject: string, body: string, labels: string }
 mailbox.get._description = "Fetch one message by id."
 mailbox.labels = () -> { labels: string }
 mailbox.labels._description = "List the mailbox's labels."
