@@ -56,6 +56,7 @@ Usage:
   office-space env docker                    Run the server in Docker mode
   office-space env lambda --event <path>     Run the Lambda agent in-process
   office-space console [options]             Interactive ft client console
+  office-space walk [--scripted]             THE STORYBOARD WALK — 12 beats, in your terminal
   office-space help                          Print this help
 
 Console options:
@@ -202,6 +203,20 @@ switch (subcommand) {
       process.exit(1);
     });
     break;
+  case 'walk': {
+    // THE STORYBOARD WALK: the 12-beat Gmail-shaped arc on the v2
+    // kernel, one beat at a time (or --scripted for CI and the GIF
+    // tape). Exit code carries the ratchet: regressions and unstruck
+    // ledger entries both fail.
+    import('./walk/runner')
+      .then(({ runWalk }) => runWalk({ scripted: argv.includes('--scripted') }))
+      .then((code) => process.exit(code))
+      .catch((e) => {
+        console.error('Walk failed to run:', e?.message ?? e);
+        process.exit(1);
+      });
+    break;
+  }
   case 'console': {
     // No imperative arg parsing. Defaults boot the console;
     // the user configures everything via ft text in the session.
