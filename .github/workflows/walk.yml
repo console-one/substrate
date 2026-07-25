@@ -1,0 +1,72 @@
+# walk.yml — the storyboard walk IS the gate, and the GIF cannot lie.
+#
+# Every push: build the sibling kernel, run the product suite (which
+# includes the walk's ratchet suite), then hold the scripted walk's
+# normalized transcript against docs/walk-transcript.golden — the
+# byte-stable law behind the recording.
+#
+# Pushes to main additionally regenerate docs/walk.gif from
+# docs/walk.tape with vhs and commit it back: the GIF in this repo is
+# only ever produced here, from the same code the tests just passed.
+
+name: walk
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  walk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout substrate
+        uses: actions/checkout@v4
+        with:
+          path: substrate
+
+      - name: Checkout the sibling kernel (file: dep layout)
+        uses: actions/checkout@v4
+        with:
+          repository: console-one/sequence
+          path: sequence
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build the kernel
+        working-directory: sequence
+        run: npm ci   # prepare → tsc build → dist/ (what substrate consumes)
+
+      - name: Install substrate
+        working-directory: substrate
+        run: npm install
+
+      - name: Product suite (includes the walk ratchet)
+        working-directory: substrate/services/office-space
+        run: npm test
+
+      - name: Transcript law — the walk says what the golden says
+        working-directory: substrate
+        run: |
+          bash scripts/walk-transcript.sh > /tmp/walk-transcript.txt
+          diff /tmp/walk-transcript.txt docs/walk-transcript.golden
+
+      - name: Regenerate the GIF from the tape (main only)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: charmbracelet/vhs-action@v2
+        with:
+          path: substrate/docs/walk.tape
+
+      - name: Commit the regenerated GIF (main only)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          repository: substrate
+          file_pattern: docs/walk.gif
+          commit_message: "ci: regenerate walk.gif from walk.tape (the un-liable recording)"

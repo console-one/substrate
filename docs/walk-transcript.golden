@@ -1,0 +1,114 @@
+THE STORYBOARD WALK — 12 beats, office level, on the v2 kernel
+(the connector is a LOCAL SIMULATOR, labeled; every posterior below is observed, never authored)
+
+━━ beat 1 ─ Write short/medium/long narratives about the TEAM and about THEMSELVES — labeled variants
+  two label groups now exist:
+    narratives.team — variants: short, medium, long
+    narratives.self — variants: short, medium, long
+  ✓ acceptance holds
+
+━━ beat 2 ─ Browse/search connectors, find the mailbox one, install it
+  browse "mail" → mailbox (Local Mailbox (simulator))
+  installed from manifest DATA: mailbox.search, mailbox.get, mailbox.labels, mailbox.send
+  ✓ acceptance holds
+
+━━ beat 3 ─ Secret tool → a key for their personal email, addressable by alias only
+  key stored; alias: _keys.mailbox.personal
+  everything downstream carries the alias — the value stays in the vault cell
+  ✓ acceptance holds
+
+━━ beat 4 ─ Create a KIT: key alias injected into the mailbox tools + a constraint filtering out email-WRITING
+  capability 'personalemail': personalemail.search, personalemail.get, personalemail.labels
+  excluded (retained constraint): send
+  ✓ acceptance holds
+
+━━ beat 5 ─ Add descriptions to the capability, transcluding self/team narratives BY LABEL ONLY
+  descriptions authored with LABELS, unresolved:
+    personalemail.search → …[[narratives.self]]
+    personalemail.get, personalemail.labels → …[[narratives.team]]
+  ✓ acceptance holds
+
+━━ beat 6 ─ (Connector author) the manifest carries TIMEWISE COHERENCE per API — metadata only
+  per-API temporal metadata (from the manifest, beat 2):
+    search: cacheable=true hydratable=true ttlMs=60000 read/min=120 write/min=0
+    get: cacheable=true hydratable=true ttlMs=300000 read/min=240 write/min=0
+    labels: cacheable=true hydratable=false ttlMs=600000 read/min=60 write/min=0
+    send: cacheable=false hydratable=false ttlMs=0 read/min=0 write/min=30
+  ✓ acceptance holds
+
+━━ beat 7 ─ Install asks: "save emails locally for speed?" → yes → local SQL tables hydrate
+save emails locally for speed? (offer derived from: search, get) [Y/n] [scripted: yes]
+  hydrated into local SQL: 24 emails, 24 stored
+  the extent is a fact: _hydration.mailbox = {"emails":24,"stored":24,"from":"manifest-offer","heldUntil":0}
+  every hydration fetch went through the measured capability — the first observed posteriors now exist
+  ✓ acceptance holds
+
+━━ beat 8 ─ office frame personalemail --maxtokens 2000 --duration 100s
+  the FT frame:
+  ────────────────────────────────────────────────────────────────
+  -- vended by sequence·v2 · session sgjdgxs0 · comments are courtesy; every load-bearing fact below is a statement
+  
+  narratives.team = "The mail crew is a four-person team that triages a shared support inbox covering invoices, renewals, releases, onboarding and retros. We answer within a day, star anything billing-related, archive aggressively, and never send from automation without a human in the loop. Escalations go to whoever is on point that week."
+  narratives.self = "I am the developer on the mail crew who owns the billing label and the renewal follow-ups. I prefer terse, code-anchored summaries. I want agents to read and organize my personal mail — search it, fetch it, label it — but composing or sending mail stays with me; that boundary is permanent, not a phase."
+  
+  personalemail.get = (id: string) -> { from: string, subject: string, body: string, labels: string } ~survival(exp, OBSERVED)
+  personalemail.get._description = "Fetch one of my messages. Team context: [[narratives.team]]"
+  personalemail.get._reliability = { alpha: 25, beta: 1 }
+  personalemail.get._validUntil = 1000100000
+  
+  personalemail.labels = () -> { labels: string }
+  personalemail.labels._description = "My label taxonomy. Team context: [[narratives.team]]"
+  personalemail.labels._validUntil = 1000100000
+  
+  personalemail.search = (q: string) -> { ids: [string] } ~survival(exp, OBSERVED)
+  personalemail.search._description = "Search my personal mail. Owner: [[narratives.self]]"
+  personalemail.search._reliability = { alpha: 3, beta: 1 }
+  personalemail.search._validUntil = 1000100000
+  
+  _sessions.sgjdgxs0.expiresAt = 1000100000
+  _sessions.sgjdgxs0.continue = (ft: string) -> { ok: boolean }
+  _sessions.sgjdgxs0.expand = (token: string) -> { content: string, costTokens: number }
+  ────────────────────────────────────────────────────────────────
+  ✓ acceptance holds
+
+━━ beat 9 ─ An agent calls a tool through the frame — and the NEXT frame's annotations have moved
+  agent (scripted): personalemail.search({ q: "renewal" }) → {"ids":["m005","m011","m017","m023"]}
+  observation recorded: samples 2 → 3
+  frame annotation before: personalemail.search = (q: string) -> { ids: [string] } ~survival(exp, OBSERVED)
+  frame annotation after:  personalemail.search = (q: string) -> { ids: [string] } ~survival(exp, OBSERVED)
+  ✓ acceptance holds
+
+━━ beat 10 ─ Later: "where was my mail used, for what?" — usage at the capability grain
+  27 uses of 'personalemail' on record:
+    personalemail.search: 3 call(s)
+    personalemail.get: 24 call(s)
+  each fact: { tool, at, ok } — session-stamped, key-free
+  ✓ acceptance holds
+
+━━ beat 11 ─ Point a second office (or a bare planner) at TWO vended frames — one merged surface   [LEDGERED — expected to fail]
+  LEDGERED: frame-level merge (compose over two vended documents —
+  same tool → tightest consistent; genuine conflict → named never)
+  is not built. Kernel scenario V17 tracks it.
+  ▢ still unbuilt (ledgered): mergeFrames is not built (V17)
+
+━━ beat 12 ─ Office B installs A's vended frame AS A CONNECTOR, narrows it, re-vends to C — closure   [LEDGERED — expected to fail]
+  B installed A's frame (vend ∘ receive = install): personalemail.get, personalemail.labels, personalemail.search
+  B re-vended a NARROWED surface to C: personalemail.search
+  temporal meet: C's grant expires 1000100000 ≤ A's 1000100000: true
+  ▢ still unbuilt (ledgered): chain-grained provenance is not built (V19)
+
+━━ the ledger
+  beat 1: PASS
+  beat 2: PASS
+  beat 3: PASS
+  beat 4: PASS
+  beat 5: PASS
+  beat 6: PASS
+  beat 7: PASS
+  beat 8: PASS
+  beat 9: PASS
+  beat 10: PASS
+  beat 11: LEDGERED (still failing, as recorded)
+  beat 12: LEDGERED (still failing, as recorded)
+
+walk complete: every built beat enforced, every unbuilt beat loud.

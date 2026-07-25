@@ -22,7 +22,7 @@ Your confusion is coming from trying to use the second as if it already implied 
 
 The old repo has a real product object model.
 
-From [`docs/OPERATING_MODEL.md`](/Users/andrewchalmers/ft/../lens-desktop/lens-desktop/docs/OPERATING_MODEL.md):
+From `lens-desktop: docs/OPERATING_MODEL.md`:
 
 - root/session/workspace scopes
 - packages as installable artifacts
@@ -50,12 +50,12 @@ The coherence is spread across too many layers.
 
 The install/edit flow crosses:
 
-- renderer component state in [`kitDetail.tsx`](/Users/andrewchalmers/ft/../lens-desktop/lens-desktop/src/renderer/src/home/panes/components/kitDetail.tsx)
-- renderer orchestration in [`usePendingMerge.ts`](/Users/andrewchalmers/ft/../lens-desktop/lens-desktop/src/renderer/src/hooks/usePendingMerge.ts)
-- IPC workflow routes in [`main.ts`](/Users/andrewchalmers/ft/../lens-desktop/lens-desktop/src/main/main.ts)
-- draft/workspace projection logic in [`draftProjection.ts`](/Users/andrewchalmers/ft/../lens-desktop/lens-desktop/src/core/workflows/draftProjection.ts)
-- workspace semantics in [`workspace.ts`](/Users/andrewchalmers/ft/../lens-desktop/lens-desktop/src/shared/type/workspace.ts)
-- field rendering logic in [`fieldTypeForm.tsx`](/Users/andrewchalmers/ft/../lens-desktop/lens-desktop/src/renderer/src/home/panes/components/fieldTypeForm.tsx)
+- renderer component state in `lens-desktop: src/renderer/src/home/panes/components/kitDetail.tsx`
+- renderer orchestration in `lens-desktop: src/renderer/src/hooks/usePendingMerge.ts`
+- IPC workflow routes in `lens-desktop: src/main/main.ts`
+- draft/workspace projection logic in `lens-desktop: src/core/workflows/draftProjection.ts`
+- workspace semantics in `lens-desktop: src/shared/type/workspace.ts`
+- field rendering logic in `lens-desktop: src/renderer/src/home/panes/components/fieldTypeForm.tsx`
 
 The product semantics are there, but they are not localized.
 
@@ -67,7 +67,7 @@ This is the main architectural problem in the old repo:
 
 The current repo has a cleaner kernel boundary.
 
-From [`packages/core/src/sequence.ts`](/Users/andrewchalmers/ft/packages/core/src/sequence.ts) and related files:
+From `ft: packages/core/src/sequence.ts` and related files:
 
 - append-only blocks
 - projection as derived state
