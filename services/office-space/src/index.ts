@@ -26,20 +26,19 @@ import { runDockerEnv, registerSignalHandlers as registerDockerSignalHandlers } 
 import { lambdaHandler, type LambdaEvent } from './env/lambda';
 import { runConsole } from './console';
 
-// Public API re-exports. The transport client/server still live in
-// @console-one/sequenceutils/transport (v1-walker-bound — deletion-
-// ledger stage-4 scope); the storage contract moved to the v2 kernel
-// surface at stage 3. This package is the product composition surface.
-export {
-  OfficeSpaceClient,
-  wrapClient,
-} from '@console-one/sequenceutils/transport';
+// Public API re-exports — ALL on the v2 kernel since deletion-ledger
+// stage 4 (the transport was the last v1-walker-bound consumption).
+// This package is the product composition surface.
+export { OfficeSpaceClient } from './v2/client';
+export { wrapClient, createOfficeSpaceClient } from './v2/api';
+export type { OfficeSpaceAPI } from './v2/api';
 export type {
-  OfficeSpaceAPI,
   ClientEvent,
   IWebSocket,
   WebSocketCtor,
-} from '@console-one/sequenceutils/transport';
+} from './v2/client';
+export { registerCompressor, expandNarrative } from './v2/compressor';
+export { registerStdlibPanels } from './v2/panels';
 export type { IStorage } from '@console-one/sequence/v2';
 export { ContextGraphServer } from './office-space-server';
 export type { ServerConfig, PriorSnapshot } from './office-space-server';

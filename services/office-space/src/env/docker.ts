@@ -41,6 +41,9 @@ export interface DockerEnvConfig {
   /** Trusted filesystem root for fs.* tools. */
   workspaceRoot?: string;
   /** Bootstrap .ft path override. */
+  /** Retired at stage 4: the v2 boot installs its constitution as
+   *  rules-as-data — there is no bootstrap.ft to point at. Kept in the
+   *  config type for callers that still pass it; ignored. */
   bootstrapPath?: string;
   /** External snapshot to recover state from at boot. When both
    *  this and SNAPSHOT_FT_PATH are set, the programmatic config
@@ -93,7 +96,6 @@ export async function runDockerEnv(config: DockerEnvConfig = {}): Promise<Docker
   const serverConfig: ServerConfig = {
     port,
     dbPath,
-    bootstrapPath: config.bootstrapPath,
     storage,
     priorSnapshot,
   };

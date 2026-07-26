@@ -16,11 +16,19 @@
  *
  * This suite exercises each shape and then verifies the Docker env
  * wrapper honours both programmatic and SNAPSHOT_FT_PATH pathways.
+ *
+ * Re-expressed on the v2 transport — deletion-ledger stage 4. The
+ * `entries` shape is now `captureSnapshot(seq)` (from
+ * `@console-one/sequence/v2`) instead of the v1 hand-rolled
+ * iterateTypes/iterateValues/policies/tools MountEntry[] walk — v2
+ * has no separate policy/tool registries to iterate, and the runtime
+ * impls registry is deliberately excluded (not serializable; the
+ * restorer's own boot re-installs it).
  */
 
 import { ContextGraphServer } from '../office-space-server.js';
 import { runDockerEnv } from '../env/docker';
-import type { MountEntry } from '@console-one/sequence';
+import { captureSnapshot, type SnapshotEntry } from '@console-one/sequence/v2';
 import { mkdtempSync, writeFileSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
@@ -49,36 +57,30 @@ describe('snapshot recovery', () => {
   // ═══════════════════════════════════════════════════════════════════
 
   test('entries: server B with priorSnapshot from server A has server A state', async () => {
-    const serverA = new ContextGraphServer({ port: 0, dbPath: ':memory:' });
+    const serverA = new ContextGraphServer({ port: 0, workspaceRoot: tempDir('a') });
     await serverA.start();
     const seqA = serverA.seq!;
 
-    // Mount some user-visible state on A. Using direct binds rather
-    // than going through the ws path so we can observe deterministic
-    // seq.head values. (tasks.* is constrained by stdlib's taskqueue
-    // schema — status must be in the pending|active|done|expired
-    // union — so the test uses conforming values.)
-    seqA.mount('bind', 'org.name', 'Acme');
-    seqA.mount('bind', 'users.alice.role', 'admin');
-    seqA.mount('bind', 'users.bob.role', 'guest');
-    seqA.mount('bind', 'tasks.t1.input', 'write handoff doc');
-    seqA.mount('bind', 'tasks.t1.status', 'pending');
+    // Mount some user-visible state on A directly on the kernel — v2
+    // has no schema constraining these paths (no bootstrap.ft), so a
+    // plain insert is the honest equivalent of v1's conforming-value
+    // constraint (there is nothing left here to violate).
+    seqA.insert({ path: 'org.name', value: 'Acme' });
+    seqA.insert({ path: 'users.alice.role', value: 'admin' });
+    seqA.insert({ path: 'users.bob.role', value: 'guest' });
+    seqA.insert({ path: 'tasks.t1.input', value: 'write handoff doc' });
+    seqA.insert({ path: 'tasks.t1.status', value: 'pending' });
 
-    // Capture the full projection as a MountEntry[] in the same
-    // shape server.stop() persists. This IS the snapshot primitive.
-    const pA = seqA.projection;
-    const snapshot: MountEntry[] = [];
-    for (const [path, type] of seqA.iterateTypes()) snapshot.push({ op: 'schema', path, value: type });
-    for (const [path, value] of seqA.iterateValues()) snapshot.push({ op: 'bind', path, value });
-    for (const [path, policy] of pA.policies) snapshot.push({ op: 'policy', path, value: policy });
-    for (const path of pA.tools.keys()) snapshot.push({ op: 'tool', path, value: true });
+    // Capture the full projection as a SnapshotEntry[] — the v2
+    // snapshot primitive (captureSnapshot), the inverse of restoreSnapshot.
+    const snapshot: SnapshotEntry[] = captureSnapshot(seqA);
 
     await serverA.stop();
 
     // Boot a fresh server B with the captured state injected.
     const serverB = new ContextGraphServer({
       port: 0,
-      dbPath: ':memory:',
+      workspaceRoot: tempDir('b'),
       priorSnapshot: { kind: 'entries', entries: snapshot },
     });
     await serverB.start();
@@ -95,8 +97,11 @@ describe('snapshot recovery', () => {
 
   // ═══════════════════════════════════════════════════════════════════
   // Ft text layering: hand-written or externally-authored ft text
-  // replays as part of the boot pipeline, on top of the bootstrap.
-  // This is the operator-facing shape (human-readable, auditable).
+  // replays as part of the boot pipeline, ON TOP of the installed
+  // boot state. This is the operator-facing shape (human-readable,
+  // auditable), and its ordering contract — boot installs FIRST, the
+  // external snapshot replays SECOND and wins — is what the Unix ops
+  // handoff and Docker restore-from-backup both depend on.
   // ═══════════════════════════════════════════════════════════════════
 
   test('ft: priorSnapshot ft text is replayed on top of bootstrap', async () => {
@@ -109,12 +114,17 @@ describe('snapshot recovery', () => {
 
     const server = new ContextGraphServer({
       port: 0,
-      dbPath: ':memory:',
+      workspaceRoot: tempDir('ft'),
+      // The boot installs this default FIRST (ServerConfig.register
+      // runs before priorSnapshot replay in v2/server.ts's start()).
+      register: (seq) => { seq.insert({ path: 'org.name', value: 'BootDefault' }); },
       priorSnapshot: { kind: 'ft', text: ft },
     });
     await server.start();
     const seq = server.seq!;
 
+    // The restored value wins over the boot default — proof that
+    // "boot installs first, then restore on top" holds in v2.
     expect(seq.get('org.name')).toBe('RestoredCo');
     expect(seq.get('users.carol.role')).toBe('admin');
     expect(seq.get('tasks.t42.title')).toBe('seed from snapshot');
@@ -135,7 +145,7 @@ describe('snapshot recovery', () => {
 
     const server = new ContextGraphServer({
       port: 0,
-      dbPath: ':memory:',
+      workspaceRoot: tempDir('ftpath-ws'),
       priorSnapshot: { kind: 'ftPath', path: file },
     });
     await server.start();
@@ -150,7 +160,7 @@ describe('snapshot recovery', () => {
   test('ftPath: missing file throws a clear error at start()', async () => {
     const server = new ContextGraphServer({
       port: 0,
-      dbPath: ':memory:',
+      workspaceRoot: tempDir('ftpath-missing'),
       priorSnapshot: { kind: 'ftPath', path: '/no/such/snapshot.ft' },
     });
     await expect(server.start()).rejects.toThrow(/priorSnapshot ftPath.*unreadable/);
@@ -159,7 +169,8 @@ describe('snapshot recovery', () => {
   // ═══════════════════════════════════════════════════════════════════
   // Docker env: the same three shapes plus the SNAPSHOT_FT_PATH env
   // var that operators will actually use when driving `docker run`.
-  // The env wrapper must honour both.
+  // The env wrapper must honour both. (env/docker.ts is already
+  // re-pointed at the v2 server/kernel — kept as-is here.)
   // ═══════════════════════════════════════════════════════════════════
 
   test('runDockerEnv: programmatic priorSnapshot is applied', async () => {
@@ -169,7 +180,7 @@ describe('snapshot recovery', () => {
 
     const handle = await runDockerEnv({
       port: 0,
-      dbPath: ':memory:',
+      dbPath: join(dir, 'contextgraph.db'),
       workspaceRoot: workspace,
       priorSnapshot: { kind: 'ft', text: ft },
       silent: true,
@@ -193,7 +204,7 @@ describe('snapshot recovery', () => {
     try {
       const handle = await runDockerEnv({
         port: 0,
-        dbPath: ':memory:',
+        dbPath: join(dir, 'contextgraph.db'),
         workspaceRoot: workspace,
         silent: true,
       });
@@ -218,11 +229,13 @@ describe('snapshot recovery', () => {
     try {
       const handle = await runDockerEnv({
         port: 0,
-        dbPath: ':memory:',
+        dbPath: join(dir, 'contextgraph.db'),
         workspaceRoot: workspace,
         priorSnapshot: { kind: 'ft', text: 'org.name = "FromProgrammatic"\n' },
         silent: true,
       });
+      // env/docker.ts resolves config.priorSnapshot ?? SNAPSHOT_FT_PATH —
+      // that IS the precedence: programmatic wins when both are set.
       expect(handle.server.seq!.get('org.name')).toBe('FromProgrammatic');
       await handle.shutdown();
     } finally {
@@ -239,23 +252,18 @@ describe('snapshot recovery', () => {
   // ═══════════════════════════════════════════════════════════════════
 
   test('hot-standby: state written to A, captured, restored into B, subsequent writes land on B only', async () => {
-    const a = new ContextGraphServer({ port: 0, dbPath: ':memory:' });
+    const a = new ContextGraphServer({ port: 0, workspaceRoot: tempDir('standby-a') });
     await a.start();
-    a.seq!.mount('bind', 'tasks.t1.input', 'original');
-    a.seq!.mount('bind', 'tasks.t1.status', 'pending');
+    a.seq!.insert({ path: 'tasks.t1.input', value: 'original' });
+    a.seq!.insert({ path: 'tasks.t1.status', value: 'pending' });
 
-    const pA = a.seq!.projection;
-    const entries: MountEntry[] = [];
-    for (const [path, type] of a.seq!.iterateTypes()) entries.push({ op: 'schema', path, value: type });
-    for (const [path, value] of a.seq!.iterateValues()) entries.push({ op: 'bind', path, value });
-    for (const [path, policy] of pA.policies) entries.push({ op: 'policy', path, value: policy });
-    for (const path of pA.tools.keys()) entries.push({ op: 'tool', path, value: true });
+    const entries: SnapshotEntry[] = captureSnapshot(a.seq!);
 
     await a.stop();
 
     const b = new ContextGraphServer({
       port: 0,
-      dbPath: ':memory:',
+      workspaceRoot: tempDir('standby-b'),
       priorSnapshot: { kind: 'entries', entries },
     });
     await b.start();
@@ -264,11 +272,10 @@ describe('snapshot recovery', () => {
     expect(b.seq!.get('tasks.t1.input')).toBe('original');
     expect(b.seq!.get('tasks.t1.status')).toBe('pending');
 
-    // New writes on B are visible on B (status transitions through
-    // the taskqueue union — pending → active).
-    b.seq!.mount('bind', 'tasks.t1.status', 'active');
-    b.seq!.mount('bind', 'tasks.t2.input', 'born on B');
-    b.seq!.mount('bind', 'tasks.t2.status', 'pending');
+    // New writes on B are visible on B.
+    b.seq!.insert({ path: 'tasks.t1.status', value: 'active' });
+    b.seq!.insert({ path: 'tasks.t2.input', value: 'born on B' });
+    b.seq!.insert({ path: 'tasks.t2.status', value: 'pending' });
     expect(b.seq!.get('tasks.t1.status')).toBe('active');
     expect(b.seq!.get('tasks.t2.input')).toBe('born on B');
 

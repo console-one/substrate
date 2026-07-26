@@ -158,10 +158,22 @@ export class ContextGraphServer {
       await receiveDocument(seq, readFileSync(this.journalPath, 'utf-8'));
     }
 
+    // ── the persistence posture, READABLE: what kind of store, where,
+    //    whether it's live, and which partitions owe persistence — all
+    //    facts, same contract the v1 server exposed ───────────────────
+    seq.insert({ path: '_storage.tool.type', value: this.journalPath ? 'ft-journal' : 'memory' });
+    if (this.journalPath) seq.insert({ path: '_storage.tool.path', value: this.journalPath });
+    seq.insert({ path: '_storage.tool.status', value: 'available' });
+    for (const [partition, persistence] of Object.entries(PARTITION_PERSISTENCE)) {
+      seq.insert({ path: `_partitions.${partition}.persistence`, value: persistence });
+    }
+
     // ── broadcast + journal: ONE observation rule (installCrossSequence)
     //    carries both — every local non-`_` value delta becomes an ft
     //    line sent to every client and appended to the journal when its
-    //    partition persists ────────────────────────────────────────────
+    //    partition persists. Degradation is LOUD: an owed write that
+    //    cannot land becomes a `_storage.gaps.*` fact, never a silent
+    //    drop (v1 contract, kept) ───────────────────────────────────────
     installCrossSequence(seq, 'id.server', (delta) => {
       if (delta.value === undefined && delta.type !== undefined) return; // types travel in documents
       const line = ftLine(delta.path, delta.value);
@@ -175,14 +187,21 @@ export class ContextGraphServer {
         // else journals per its partition's declared persistence.
         const partition = partitionOf(delta.path, seq.rawTypeAt(delta.path));
         if (PARTITION_PERSISTENCE[partition] !== 'never') {
-          try {
-            appendFileSync(this.journalPath, line + '\n');
-          } catch (e) {
-            // LOUD degradation, never a silent drop (v1 contract).
+          const gap = (reason: string): void => {
             seq.insert({
               path: `_storage.gaps.${seq.nextSequence()}`,
-              value: { path: delta.path, reason: (e as Error).message, time: seq.now() },
+              value: { paths: [delta.path], reason, time: seq.now() },
             });
+          };
+          if (seq.getCell('_storage.tool.status')?.value !== 'available') {
+            gap('storage unavailable');
+          } else {
+            try {
+              appendFileSync(this.journalPath, line + '\n');
+            } catch (e) {
+              seq.insert({ path: '_storage.tool.status', value: 'degraded' });
+              gap((e as Error).message);
+            }
           }
         }
       }

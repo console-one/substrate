@@ -22,7 +22,7 @@
  * What installing a kit does:
  *   1. Validate the manifest (required fields, well-formed source)
  *   2. Dispatch by source kind:
- *        - `ftInline`: run the content through `receive()` into the seq
+ *        - `ftInline`: run the content through `receiveDocument()` into the seq
  *        - `ft`:       read the file from storage, then `ftInline`
  *        - `url`:      fetch the remote manifest, recurse
  *        - `module`:   dynamic import a TS module, call its
@@ -34,8 +34,8 @@
  *      that the caller can attempt to satisfy before use).
  */
 
-import type { Sequence } from '@console-one/sequence';
-import { receive } from '@console-one/sequence';
+import type { Sequence } from '@console-one/sequence/v2';
+import { receiveDocument } from '@console-one/sequence/v2';
 import type { IStorage } from '@console-one/sequence/v2';
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -239,16 +239,22 @@ export class KitInstaller {
     try {
       switch (manifest.source.kind) {
         case 'ftInline': {
-          const result = (receive as any)(manifest.source.content, seq);
-          mountCount = result.mounts?.length ?? 0;
-          collectGaps(result.mounts ?? [], gaps);
+          const result = await receiveDocument(seq, manifest.source.content);
+          mountCount = result.applied;
+          for (const err of result.errors) gaps.push({ path: '', reason: err });
+          if (result.errors.length > 0) {
+            throw new KitSourceError(result.errors[0]);
+          }
           break;
         }
         case 'ft': {
           const content = await this.resolver.readFt(manifest.source.storageKey);
-          const result = (receive as any)(content, seq);
-          mountCount = result.mounts?.length ?? 0;
-          collectGaps(result.mounts ?? [], gaps);
+          const result = await receiveDocument(seq, content);
+          mountCount = result.applied;
+          for (const err of result.errors) gaps.push({ path: '', reason: err });
+          if (result.errors.length > 0) {
+            throw new KitSourceError(result.errors[0]);
+          }
           break;
         }
         case 'url': {
@@ -257,9 +263,12 @@ export class KitInstaller {
           // extension can negotiate content type (application/ft
           // vs application/json+manifest) and dispatch to a nested
           // manifest install.
-          const result = (receive as any)(body, seq);
-          mountCount = result.mounts?.length ?? 0;
-          collectGaps(result.mounts ?? [], gaps);
+          const result = await receiveDocument(seq, body);
+          mountCount = result.applied;
+          for (const err of result.errors) gaps.push({ path: '', reason: err });
+          if (result.errors.length > 0) {
+            throw new KitSourceError(result.errors[0]);
+          }
           break;
         }
         case 'module': {
@@ -282,19 +291,15 @@ export class KitInstaller {
       };
     }
 
-    // Record the installation. Uses batched mounts so the block is
-    // atomic: either the whole kit record lands or none of it
-    // does (matches the transactional feel of the source mounts).
+    // Record the installation.
     const installedAt = Date.now();
-    seq.mount([
-      { op: 'bind', path: `_kits.${manifest.id}.id`, value: manifest.id },
-      { op: 'bind', path: `_kits.${manifest.id}.version`, value: manifest.version },
-      { op: 'bind', path: `_kits.${manifest.id}.installedAt`, value: installedAt },
-      { op: 'bind', path: `_kits.${manifest.id}.source.kind`, value: manifest.source.kind },
-      ...(manifest.description
-        ? [{ op: 'bind' as const, path: `_kits.${manifest.id}.description`, value: manifest.description }]
-        : []),
-    ]);
+    seq.insert({ path: `_kits.${manifest.id}.id`, value: manifest.id });
+    seq.insert({ path: `_kits.${manifest.id}.version`, value: manifest.version });
+    seq.insert({ path: `_kits.${manifest.id}.installedAt`, value: installedAt });
+    seq.insert({ path: `_kits.${manifest.id}.source.kind`, value: manifest.source.kind });
+    if (manifest.description) {
+      seq.insert({ path: `_kits.${manifest.id}.description`, value: manifest.description });
+    }
 
     return { ok: true, id: manifest.id, mountCount, gaps };
   }
@@ -308,10 +313,10 @@ export class KitInstaller {
    * stops appearing in `list()`.
    */
   async uninstall(seq: Sequence, kitId: string): Promise<void> {
-    for (const field of ['id', 'version', 'installedAt', 'description', 'source']) {
-      seq.mount('delete', `_kits.${kitId}.${field}`, undefined);
+    for (const field of ['id', 'version', 'installedAt', 'description', 'source.kind']) {
+      seq.insert({ path: `_kits.${kitId}.${field}`, op: 'invalidate' });
     }
-    seq.mount('delete', `_kits.${kitId}`, undefined);
+    seq.insert({ path: `_kits.${kitId}`, op: 'invalidate' });
   }
 
   /**

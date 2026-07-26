@@ -4,22 +4,23 @@
  * Verifies: threshold triggers compaction, cold paths are evicted
  * from projection + stored, narrative pointer is mounted, re-expansion
  * restores the paths from storage.
+ *
+ * Re-expressed on the v2 transport (deletion-ledger stage 4): the
+ * kernel is v2, storage is the IStorage contract (real NodeStorage on
+ * a temp dir), cold = lowest observed access posterior.
  */
 
-import { Sequence } from '@console-one/sequence';
-import { Store } from '@console-one/sequenceutils/transport';
-import { registerCompressor, expandNarrative } from '@console-one/sequenceutils/transport';
+import { Sequence, NodeStorage } from '@console-one/sequence/v2';
+import { registerCompressor, expandNarrative } from '../v2/compressor.js';
+import { mkdtempSync } from 'fs';
+import { join } from 'path';
+import { tmpdir } from 'os';
 
 describe('narrative compressor', () => {
-  let store: Store;
+  let storage: NodeStorage;
 
   beforeEach(() => {
-    store = new Store(':memory:');
-    store.createPartition('_server');
-  });
-
-  afterEach(() => {
-    store.close();
+    storage = new NodeStorage(mkdtempSync(join(tmpdir(), 'compressor-')));
   });
 
   // Use varied root prefixes so clusters are small enough for
@@ -28,58 +29,65 @@ describe('narrative compressor', () => {
   function mountMany(seq: Sequence, count: number): void {
     for (let i = 0; i < count; i++) {
       const group = `g${Math.floor(i / 5)}`;
-      seq.mount('bind', `${group}.k${i}`, `value_${i}`);
+      seq.insert({ path: `${group}.k${i}`, value: `value_${i}` });
     }
   }
 
   function nonInternalKeyCount(seq: Sequence): number {
-    let count = 0;
-    for (const [path] of seq.iterateValues()) {
-      if (!path.startsWith('_')) count++;
-    }
-    return count;
+    return seq.cells()
+      .filter((c) => c.path && !c.path.startsWith('_') && c.value !== undefined)
+      .length;
   }
 
-  test('does not compact when below threshold', () => {
+  async function untilNarratives(seq: Sequence, ms = 2000): Promise<string[]> {
+    const t0 = Date.now();
+    for (;;) {
+      const keys = seq.keys('_narratives');
+      if (keys.length > 0) return keys;
+      if (Date.now() - t0 > ms) return keys;
+      await new Promise((r) => setTimeout(r, 20));
+    }
+  }
+
+  test('does not compact when below threshold', async () => {
     const seq = new Sequence(() => Date.now());
-    const { compact } = registerCompressor(seq, store, { maxKeys: 100, disableObserver: true });
+    const { compact } = registerCompressor(seq, storage, { maxKeys: 100, disableObserver: true });
     mountMany(seq, 50);
-    const evicted = compact();
+    const evicted = await compact();
     expect(evicted).toBe(0);
     expect(nonInternalKeyCount(seq)).toBe(50);
   });
 
-  test('compacts when projection exceeds maxKeys', () => {
+  test('compacts when projection exceeds maxKeys', async () => {
     const seq = new Sequence(() => Date.now());
-    const { compact } = registerCompressor(seq, store, { maxKeys: 50, evictTarget: 20, disableObserver: true });
+    const { compact } = registerCompressor(seq, storage, { maxKeys: 50, evictTarget: 20, disableObserver: true });
     mountMany(seq, 60);
     expect(nonInternalKeyCount(seq)).toBe(60);
 
-    const evicted = compact();
+    const evicted = await compact();
     expect(evicted).toBeGreaterThan(0);
     expect(nonInternalKeyCount(seq)).toBeLessThanOrEqual(50);
   });
 
-  test('evicted paths are removed from projection', () => {
+  test('evicted paths are removed from projection', async () => {
     const seq = new Sequence(() => Date.now());
-    registerCompressor(seq, store, { maxKeys: 30, evictTarget: 15 });
+    registerCompressor(seq, storage, { maxKeys: 30, evictTarget: 15 });
     mountMany(seq, 40);
+    await untilNarratives(seq);
 
-    // Observer fires during mountMany once threshold is crossed.
-    // Some paths should be gone.
     let missing = 0;
     for (let i = 0; i < 40; i++) {
       const group = `g${Math.floor(i / 5)}`;
-      if (seq.get(`${group}.k${i}`) === undefined) missing++;
+      if (seq.getCell(`${group}.k${i}`)?.value === undefined) missing++;
     }
     expect(missing).toBeGreaterThan(0);
   });
 
-  test('narrative pointer is mounted after compaction', () => {
+  test('narrative pointer is mounted after compaction', async () => {
     const seq = new Sequence(() => Date.now());
-    const { compact } = registerCompressor(seq, store, { maxKeys: 30, evictTarget: 10, disableObserver: true });
+    const { compact } = registerCompressor(seq, storage, { maxKeys: 30, evictTarget: 10, disableObserver: true });
     mountMany(seq, 40);
-    compact();
+    await compact();
 
     const narrativeKeys = seq.keys('_narratives');
     expect(narrativeKeys.length).toBeGreaterThan(0);
@@ -91,63 +99,47 @@ describe('narrative compressor', () => {
     expect(seq.get(`_narratives.${nid}.compactedAt`)).toBeGreaterThan(0);
   });
 
-  test('evicted data is retrievable from storage', () => {
+  test('evicted data is retrievable from storage', async () => {
     const seq = new Sequence(() => Date.now());
-    const { compact } = registerCompressor(seq, store, { maxKeys: 30, evictTarget: 10, disableObserver: true });
+    const { compact } = registerCompressor(seq, storage, { maxKeys: 30, evictTarget: 10, disableObserver: true });
     mountMany(seq, 40);
-    compact();
+    await compact();
 
-    const narrativeKeys = seq.keys('_narratives');
-    expect(narrativeKeys.length).toBeGreaterThan(0);
-
-    const nid = narrativeKeys[0];
+    const nid = seq.keys('_narratives')[0];
     const storeKey = seq.get(`_narratives.${nid}.storeKey`) as string;
-    const snapshot = store.loadSnapshot(storeKey);
-    expect(snapshot).not.toBeNull();
-    expect(snapshot!.entries.length).toBeGreaterThan(0);
+    const entries = JSON.parse(await storage.read(storeKey)) as unknown[];
+    expect(entries.length).toBeGreaterThan(0);
   });
 
-  test('expandNarrative restores evicted paths into the projection', () => {
+  test('expandNarrative restores evicted paths into the projection', async () => {
     const seq = new Sequence(() => Date.now());
-    const { compact } = registerCompressor(seq, store, { maxKeys: 30, evictTarget: 10, disableObserver: true });
+    const { compact } = registerCompressor(seq, storage, { maxKeys: 30, evictTarget: 10, disableObserver: true });
     mountMany(seq, 40);
-    compact();
+    await compact();
 
-    const narrativeKeys = seq.keys('_narratives');
-    expect(narrativeKeys.length).toBeGreaterThan(0);
-
-    const nid = narrativeKeys[0];
+    const nid = seq.keys('_narratives')[0];
     const beforeExpand = nonInternalKeyCount(seq);
 
-    const restored = expandNarrative(seq, store, nid);
+    const restored = await expandNarrative(seq, storage, nid);
     expect(restored).toBeGreaterThan(0);
-
-    // After expansion, more keys are visible.
     expect(nonInternalKeyCount(seq)).toBeGreaterThan(beforeExpand);
-
-    // The narrative has an expandedAt timestamp.
     expect(seq.get(`_narratives.${nid}.expandedAt`)).toBeGreaterThan(0);
   });
 
-  test('compaction is non-reentrant (narrative mount does not re-trigger)', () => {
+  test('compaction is non-reentrant (narrative mount does not re-trigger)', async () => {
     const seq = new Sequence(() => Date.now());
-    // The observer fires during mountMany. The test verifies
-    // that the narrative mount INSIDE compact() doesn't trigger
-    // the observer to run compact() again (which would be an
-    // infinite loop). If we reach the end, non-reentrance works.
-    registerCompressor(seq, store, { maxKeys: 20, evictTarget: 5 });
+    registerCompressor(seq, storage, { maxKeys: 20, evictTarget: 5 });
     mountMany(seq, 30);
-    // No hang, no stack overflow.
-    expect(seq.keys('_narratives').length).toBeGreaterThan(0);
+    const keys = await untilNarratives(seq);
+    // No hang, no stack overflow — and compaction actually ran.
+    expect(keys.length).toBeGreaterThan(0);
   });
 
-  test('auto-compaction fires from observer when threshold is crossed', () => {
+  test('auto-compaction fires from observer when threshold is crossed', async () => {
     const seq = new Sequence(() => Date.now());
-    registerCompressor(seq, store, { maxKeys: 20, evictTarget: 5 });
+    registerCompressor(seq, storage, { maxKeys: 20, evictTarget: 5 });
     mountMany(seq, 30);
-
-    // Observer fires — narrative should exist.
-    const narrativeKeys = seq.keys('_narratives');
+    const narrativeKeys = await untilNarratives(seq);
     expect(narrativeKeys.length).toBeGreaterThan(0);
   });
 });

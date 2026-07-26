@@ -7,16 +7,22 @@
  *
  * Tests:
  *   1. Connection mounts `id.sessions.{clientId}.*` in the id partition
- *   2. Client messages carry `author` meta threaded via receive()'s
- *      defaultOpts → the walker's wrapped-seq proxy → every mount
- *   3. _exec records for client-originated blocks carry runBy matching
- *      the client's identity path
- *   4. A path constrained by `producedBy(id.sessions.{clientId})`
- *      accepts writes from the matching client and rejects writes
- *      from a different client
+ *   2. Client messages carry `author` meta threaded via receiveDocument's
+ *      `{author: identityPath}` option — proved observably through
+ *      writer-authority's own admission decision over `sessions.*`
+ *      (v2 judges authorship at admission time; there is no `_exec`
+ *      log of it, so the v1 `runBy` assertion has no v2 counterpart —
+ *      see the comment on the second test below)
+ *   3. A path constrained by installWriterAuthority on a custom scope
+ *      accepts writes from the matching claimant and rejects writes
+ *      from a different connection
+ *   4. Two connections get distinct identities
+ *
+ * Re-expressed on the v2 transport — deletion-ledger stage 4.
  */
 
 import { ContextGraphServer } from '../office-space-server.js';
+import { installWriterAuthority } from '@console-one/sequence/v2';
 import WebSocket from 'ws';
 import { mkdtempSync, rmSync } from 'fs';
 import { join } from 'path';
@@ -25,6 +31,17 @@ import { tmpdir } from 'os';
 function tmpDb(): string {
   const dir = mkdtempSync(join(tmpdir(), 'cg-id-test-'));
   return join(dir, 'test.db');
+}
+
+/** Poll until `fn` returns truthy (the transport applies async). */
+async function until<T>(fn: () => T, ms = 3000): Promise<T> {
+  const t0 = Date.now();
+  for (;;) {
+    const v = fn();
+    if (v) return v;
+    if (Date.now() - t0 > ms) throw new Error('until: timed out');
+    await new Promise((r) => setTimeout(r, 20));
+  }
 }
 
 function createRawClient(port: number): Promise<{
@@ -84,82 +101,115 @@ describe('identity as partition (incoherence #4)', () => {
 
   test('connection mounts id.sessions.{clientId} in the id partition', async () => {
     const c = await createRawClient(port);
-    // The initial render contains the whole hoisted state.
-    const initial = await c.waitFor('id.sessions', 2000).catch(() => '');
-    // The id partition entries should appear in the initial snapshot.
-    expect(initial).toContain('id.sessions.');
-    expect(initial).toContain('connectedAt');
-    expect(initial).toContain('transport');
+    // On connect the server inserts connectedAt then transport — each
+    // insert fires installCrossSequence's broadcast immediately (one
+    // ft line per delta, to every connected client including this
+    // brand-new one), and ONLY THEN sends the full welcome hoist. So
+    // this connection's mailbox is [connectedAt line, transport line,
+    // full hoist, ...] — assert over the combined transcript, not a
+    // single message.
+    await c.waitFor('transport', 2000);
+    const combined = c.messages.join('\n');
+    expect(combined).toContain('id.sessions.');
+    expect(combined).toContain('connectedAt');
+    expect(combined).toContain('transport');
     c.close();
   });
 
-  test('client messages carry author meta — _exec records runBy', async () => {
+  test('client-authored writes carry the connection identity as author, enforced by writer authority', async () => {
     const c = await createRawClient(port);
-    // Wait for initial state.
-    await c.waitFor('org.name', 2000);
+    await c.waitFor('id.sessions', 2000);
 
-    // Write a path.
-    c.send('alice.note = "hello"');
-    // The reader cascades the change back as a delta line.
-    await c.waitFor('alice.note', 2000);
-
-    // The server's sequence should now have an _exec record whose
-    // runBy field points at the client's id.sessions.* path. Query
-    // it through a second client to avoid depending on internal APIs.
-    const inspector = await createRawClient(port);
-    await inspector.waitFor('alice.note', 2000);
-
-    // Access server state directly for the assertion — inspector only
-    // proves the change propagated.
+    // Server threads `{author: identityPath}` through receiveDocument
+    // for every message from this socket (v2/server.ts's ws.on('message')
+    // handler). stampSessions then sets sessions.alice.holder to that
+    // SAME identity — the observable proof that the connection's
+    // identity, not the asserted username in the ft text, is what
+    // lands as authorship.
+    //
+    // v1 proved this via an `_exec.{n}.runBy` record. v2 has no such
+    // log: authorship is judged at admission time (the writer-
+    // authority guard reading block.author), never written down as a
+    // side-channel fact — so the admission DECISION over sessions.*
+    // is the equivalent observable, not a record to query.
+    c.send('sessions.alice.user = "alice"');
     const seq = server.seq!;
-    // Find any _exec.{n}.runBy value
-    const execKeys = seq.keys('_exec');
-    const runByPaths: string[] = [];
-    for (const k of execKeys) {
-      const runBy = seq.get(`_exec.${k}.runBy`) as string | undefined;
-      if (runBy) runByPaths.push(runBy);
+    const holder = await until(() => seq.getCell('sessions.alice.holder')?.value) as string;
+    expect(holder).toMatch(/^id\.sessions\.c_/);
+
+    // A second connection's write to the SAME session path is refused
+    // — its author is its own identity, not the holder's.
+    const other = await createRawClient(port);
+    await other.waitFor('id.sessions', 2000);
+    other.send('sessions.alice.note = "hijack"');
+    await new Promise((r) => setTimeout(r, 200));
+
+    expect(seq.get('sessions.alice.note')).toBeUndefined();
+    expect(seq.getCell('sessions.alice.holder')?.value).toBe(holder);
+
+    c.close();
+    other.close();
+  });
+
+  test('provenance rejects writes from the wrong author — installWriterAuthority on a custom scope', async () => {
+    // v1 proved provenance with a `producedBy` type constraint mounted
+    // via `<<` (schema compose, not overwrite). v2's ft receive path
+    // has no `<<` compose operator, so this is re-expressed with the
+    // primitive the product's own sessions.* law is built from:
+    // installWriterAuthority on an arbitrary scope. There is no
+    // stampSessions-equivalent auto-holder for a scope the product
+    // hasn't wired — so the test plays that role directly, exactly as
+    // a real product's ServerConfig.register would.
+    const secretDbPath = tmpDb();
+    const secretServer = new ContextGraphServer({
+      port: 0,
+      dbPath: secretDbPath,
+      register: (seq) => {
+        installWriterAuthority(seq, { scope: 'secret', ownerSegmentIndex: 1 });
+      },
+    });
+    const secretPort = await secretServer.start();
+    try {
+      const seq = secretServer.seq!;
+
+      // First connection claims secret.thing.* by writing it — holder
+      // is unset, so the write is admitted (first-claim condition).
+      const first = await createRawClient(secretPort);
+      await first.waitFor('id.sessions', 2000);
+      first.send('secret.thing.value = "claimed"');
+      await until(() => seq.get('secret.thing.value'));
+      expect(seq.get('secret.thing.value')).toBe('claimed');
+
+      // Stamp the holder to the first connection's identity — the
+      // product-level bookkeeping installWriterAuthority itself
+      // deliberately leaves to the host (server.ts does this for
+      // sessions.* via stampSessions; there is no such wiring for
+      // this synthetic scope, so the test does it explicitly).
+      const [firstClientKey] = seq.keys('id.sessions');
+      seq.insert({ path: 'secret.thing.holder', value: `id.sessions.${firstClientKey}` });
+
+      // A second, different connection's write is rejected — its
+      // author does not match the recorded holder.
+      const second = await createRawClient(secretPort);
+      await second.waitFor('id.sessions', 2000);
+      second.send('secret.thing.value = "should-be-rejected"');
+      await new Promise((r) => setTimeout(r, 200));
+
+      expect(seq.get('secret.thing.value')).toBe('claimed');
+
+      first.close();
+      second.close();
+    } finally {
+      await secretServer.stop();
+      try { rmSync(secretDbPath, { force: true }); } catch {}
     }
-    // At least one _exec record has a runBy, and it matches the id.sessions.* pattern.
-    expect(runByPaths.length).toBeGreaterThan(0);
-    expect(runByPaths.some(p => p.startsWith('id.sessions.'))).toBe(true);
-
-    c.close();
-    inspector.close();
-  });
-
-  test('provenance rejects writes from the wrong author', async () => {
-    // Install a schema on the server with a producedBy constraint that
-    // only allows writes from a specific impossible author.
-    const seq = server.seq!;
-    const { createType, producedBy } = await import('@console-one/sequence');
-    seq.mount('schema', 'secret.locked', createType('string', [
-      producedBy('some-other-authority'),
-    ]));
-
-    // A client tries to write to the constrained path. Its author meta
-    // is its id.sessions.{clientId} — which doesn't match the required
-    // producer — so the write is rejected at admission.
-    const c = await createRawClient(port);
-    await c.waitFor('org.name', 2000);
-
-    // `<<` not `=` — `=` unconditionally overwrites the schema
-    // (documented walker limitation). `<<` composes with the existing
-    // schema, preserving the producedBy constraint so provenance fires.
-    c.send('secret.locked << "should-be-rejected"');
-    // Give the server a moment to process.
-    await new Promise(r => setTimeout(r, 200));
-
-    // The write should NOT have landed — provenance rejected it.
-    expect(seq.get('secret.locked')).toBeUndefined();
-
-    c.close();
   });
 
   test('two clients have distinct identities', async () => {
     const c1 = await createRawClient(port);
     const c2 = await createRawClient(port);
-    await c1.waitFor('org.name', 2000);
-    await c2.waitFor('org.name', 2000);
+    await c1.waitFor('id.sessions', 2000);
+    await c2.waitFor('id.sessions', 2000);
 
     const seq = server.seq!;
     const sessionKeys = seq.keys('id.sessions');

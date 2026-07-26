@@ -16,8 +16,8 @@
  * invocation surfaces.
  */
 
-import { OfficeSpaceClient } from '@console-one/sequenceutils/transport';
-import type { ClientEvent } from '@console-one/sequenceutils/transport';
+import { OfficeSpaceClient } from '../v2/client';
+import type { ClientEvent } from '../v2/client';
 import { NodeStorage } from '@console-one/sequence/v2';
 import type { IStorage } from '@console-one/sequence/v2';
 import { join } from 'path';

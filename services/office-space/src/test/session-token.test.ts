@@ -15,19 +15,18 @@
  * connect handshake. These tests exercise the primitive standalone.
  */
 
-import { Sequence, partitionOf } from '@console-one/sequence';
-// The pure primitives moved to the v2 kernel surface (deletion-ledger
-// stage 3); the canonicalization is byte-identical (U+001F-delimited
-// HMAC-SHA256), so v2-minted tokens validate against v1-wired caps and
-// vice versa. registerAuthCaps is the v1 mount-based wiring and stays
-// with the v1 transport until the server moves (stage 4).
+import { Sequence, partitionOf, receiveCall, advanceClock } from '@console-one/sequence/v2';
+// Everything on the v2 kernel surface since deletion-ledger stage 4 —
+// the primitives moved at stage 3 (byte-identical U+001F-delimited
+// HMAC-SHA256 canonicalization), and the tool wiring (installAuthCaps)
+// followed when the transport moved.
 import {
   mintSessionToken,
   validateSessionToken,
   generateTokenSecret,
   type SessionToken,
 } from '@console-one/sequence/v2';
-import { registerAuthCaps } from '@console-one/sequenceutils/transport';
+import { installAuthCaps as registerAuthCaps } from '@console-one/sequence/v2';
 
 describe('session token — mint/validate primitive', () => {
   const secret = 'deadbeef'.repeat(16); // 128-char hex, fixed for reproducibility
@@ -136,50 +135,44 @@ describe('session token — registerAuthCaps', () => {
     expect(partitionOf('id.server.token_secret', schema)).toBe('id');
   });
 
-  test('mints a token via the auth.mintSessionToken tool', () => {
+  test('mints a token via the auth.mintSessionToken tool', async () => {
     const seq = new Sequence(() => now);
     registerAuthCaps(seq, { secret: 'testsecret'.repeat(8) });
-    // Invoke the mint tool by binding an input to its fn-typed path.
-    // Phase A of the tool-op collapse made bind-with-non-function
-    // on an fn schema invoke the registered impl.
-    seq.mount('bind', 'auth.mintSessionToken', { user: 'alice', expiresAt: now + oneHour });
-    const token = seq.get('auth.mintSessionToken.result') as SessionToken;
+    // Invoke the mint tool through the shared v2 call path.
+    const token = (await receiveCall(seq, 'auth.mintSessionToken', { user: 'alice', expiresAt: now + oneHour })).value as SessionToken;
     expect(token).toBeDefined();
     expect(token.user).toBe('alice');
     expect(token.expiresAt).toBe(now + oneHour);
     expect(typeof token.signature).toBe('string');
   });
 
-  test('validates a token via the auth.validateSessionToken tool', () => {
+  test('validates a token via the auth.validateSessionToken tool', async () => {
     const seq = new Sequence(() => now);
+    advanceClock(seq, now); // the validate cap reads _rt, not wall time
     const { secret } = registerAuthCaps(seq, { secret: 'testsecret'.repeat(8) });
     const token = mintSessionToken('alice', now + oneHour, secret);
-    seq.mount('bind', 'auth.validateSessionToken', { token });
-    const result = seq.get('auth.validateSessionToken.result') as any;
+    const result = (await receiveCall(seq, 'auth.validateSessionToken', { token })).value as any;
     expect(result.ok).toBe(true);
     expect(result.user).toBe('alice');
   });
 
-  test('mint via tool and validate via tool round-trip end-to-end', () => {
+  test('mint via tool and validate via tool round-trip end-to-end', async () => {
     const seq = new Sequence(() => now);
+    advanceClock(seq, now); // the validate cap reads _rt, not wall time
     registerAuthCaps(seq, { secret: 'testsecret'.repeat(8) });
 
-    seq.mount('bind', 'auth.mintSessionToken', { user: 'bob', expiresAt: now + oneHour });
-    const token = seq.get('auth.mintSessionToken.result');
-
-    seq.mount('bind', 'auth.validateSessionToken', { token });
-    const result = seq.get('auth.validateSessionToken.result') as any;
+    const token = (await receiveCall(seq, 'auth.mintSessionToken', { user: 'bob', expiresAt: now + oneHour })).value;
+    const result = (await receiveCall(seq, 'auth.validateSessionToken', { token })).value as any;
     expect(result.ok).toBe(true);
     expect(result.user).toBe('bob');
   });
 
-  test('validate via tool rejects a forged token', () => {
+  test('validate via tool rejects a forged token', async () => {
     const seq = new Sequence(() => now);
     const { secret } = registerAuthCaps(seq, { secret: 'testsecret'.repeat(8) });
     const token = mintSessionToken('alice', now + oneHour, secret);
     const forged = { ...token, user: 'mallory' };
-    seq.mount('bind', 'auth.validateSessionToken', { token: forged });
-    const result = seq.get('auth.validateSessionToken.result') as any;
+    const result = (await receiveCall(seq, 'auth.validateSessionToken', { token: forged })).value as any;
     expect(result.ok).toBe(false);
     expect(result.reason).toBe('signature_mismatch');
   });

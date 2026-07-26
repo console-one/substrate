@@ -15,14 +15,27 @@
  *     validate tokens minted by the previous boot.
  *   - Server restart with a DIFFERENT tokenSecret invalidates
  *     prior tokens (the expected failure mode for rotation).
+ *
+ * Re-expressed on the v2 transport — deletion-ledger stage 4.
  */
 
 import { ContextGraphServer } from '../office-space-server.js';
-import { OfficeSpaceClient } from '@console-one/sequenceutils/transport';
-import { mintSessionToken, validateSessionToken, type SessionToken } from '@console-one/sequence/v2';
+import { OfficeSpaceClient } from '../v2/client.js';
+import { mintSessionToken, validateSessionToken, receiveCall, type SessionToken } from '@console-one/sequence/v2';
 import { mkdtempSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
+
+/** Poll until `fn` returns truthy (the transport applies async). */
+async function until<T>(fn: () => T, ms = 3000): Promise<T> {
+  const t0 = Date.now();
+  for (;;) {
+    const v = fn();
+    if (v) return v;
+    if (Date.now() - t0 > ms) throw new Error('until: timed out');
+    await new Promise((r) => setTimeout(r, 20));
+  }
+}
 
 describe('session token — server integration', () => {
   const sharedSecret = 'integration-secret-'.repeat(4).slice(0, 64);
@@ -34,7 +47,6 @@ describe('session token — server integration', () => {
   beforeEach(async () => {
     server = new ContextGraphServer({
       port: 0,
-      dbPath: ':memory:',
       tokenSecret: sharedSecret,
     });
     port = await server.start();
@@ -67,23 +79,21 @@ describe('session token — server integration', () => {
   test('session mount produces a signed token at sessions.{user}.token', async () => {
     const client = tempClient('alice');
     await client.boot();
-    await new Promise((r) => setTimeout(r, 150));
 
-    const token = server.seq!.get('sessions.alice.token') as SessionToken | undefined;
+    const token = await until(() => server.seq!.get('sessions.alice.token')) as SessionToken;
     expect(token).toBeDefined();
-    expect(token?.user).toBe('alice');
-    expect(typeof token?.expiresAt).toBe('number');
-    expect(typeof token?.signature).toBe('string');
+    expect(token.user).toBe('alice');
+    expect(typeof token.expiresAt).toBe('number');
+    expect(typeof token.signature).toBe('string');
     // Signature is hex-encoded SHA256 output, should be 64 chars.
-    expect(token?.signature.length).toBe(64);
+    expect(token.signature.length).toBe(64);
   });
 
   test('the minted token validates against the server secret', async () => {
     const client = tempClient('alice');
     await client.boot();
-    await new Promise((r) => setTimeout(r, 150));
 
-    const token = server.seq!.get('sessions.alice.token') as SessionToken;
+    const token = await until(() => server.seq!.get('sessions.alice.token')) as SessionToken;
     const result = validateSessionToken(token, sharedSecret);
     expect(result.ok).toBe(true);
     if (result.ok === true) expect(result.user).toBe('alice');
@@ -92,11 +102,16 @@ describe('session token — server integration', () => {
   test('the minted token validates via the auth.validateSessionToken tool', async () => {
     const client = tempClient('alice');
     await client.boot();
-    await new Promise((r) => setTimeout(r, 150));
 
-    const token = server.seq!.get('sessions.alice.token');
-    server.seq!.mount('bind', 'auth.validateSessionToken', { token });
-    const result = server.seq!.get('auth.validateSessionToken.result') as any;
+    const token = await until(() => server.seq!.get('sessions.alice.token'));
+
+    // v1 drove this through mount('bind', ...) + reading `.result`;
+    // v2's call subset is receiveCall against seq.impls — the tool
+    // path and I/O shape are unchanged (installAuthCaps wires
+    // 'auth.validateSessionToken' to take { token } and return the
+    // same AuthValidationResult shape validateSessionToken() does).
+    const outcome = await receiveCall(server.seq!, 'auth.validateSessionToken', { token });
+    const result = outcome.value as { ok: boolean; user?: string };
     expect(result.ok).toBe(true);
     expect(result.user).toBe('alice');
   });
@@ -105,10 +120,9 @@ describe('session token — server integration', () => {
     const alice = tempClient('alice');
     const bob = tempClient('bob');
     await Promise.all([alice.boot(), bob.boot()]);
-    await new Promise((r) => setTimeout(r, 200));
 
-    const aliceToken = server.seq!.get('sessions.alice.token') as SessionToken;
-    const bobToken = server.seq!.get('sessions.bob.token') as SessionToken;
+    const aliceToken = await until(() => server.seq!.get('sessions.alice.token')) as SessionToken;
+    const bobToken = await until(() => server.seq!.get('sessions.bob.token')) as SessionToken;
 
     expect(aliceToken.user).toBe('alice');
     expect(bobToken.user).toBe('bob');
@@ -124,9 +138,8 @@ describe('session token — server integration', () => {
   test('a tampered user field in the token is rejected by validation', async () => {
     const client = tempClient('alice');
     await client.boot();
-    await new Promise((r) => setTimeout(r, 150));
 
-    const token = server.seq!.get('sessions.alice.token') as SessionToken;
+    const token = await until(() => server.seq!.get('sessions.alice.token')) as SessionToken;
     const forged: SessionToken = { ...token, user: 'mallory' };
     const result = validateSessionToken(forged, sharedSecret);
     expect(result.ok).toBe(false);
@@ -144,8 +157,8 @@ describe('session token — server integration', () => {
     // Current server (started with sharedSecret in beforeEach) should
     // accept the prior token — the secret is what matters, not the
     // process identity.
-    server.seq!.mount('bind', 'auth.validateSessionToken', { token: priorToken });
-    const result = server.seq!.get('auth.validateSessionToken.result') as any;
+    const outcome = await receiveCall(server.seq!, 'auth.validateSessionToken', { token: priorToken });
+    const result = outcome.value as { ok: boolean; user?: string };
     expect(result.ok).toBe(true);
     expect(result.user).toBe('alice');
   });
@@ -161,13 +174,12 @@ describe('session token — server integration', () => {
     // rejects the prior token.
     const rotated = new ContextGraphServer({
       port: 0,
-      dbPath: ':memory:',
       tokenSecret: 'rotated-secret-'.repeat(4).slice(0, 64),
     });
     await rotated.start();
     try {
-      rotated.seq!.mount('bind', 'auth.validateSessionToken', { token: priorToken });
-      const result = rotated.seq!.get('auth.validateSessionToken.result') as any;
+      const outcome = await receiveCall(rotated.seq!, 'auth.validateSessionToken', { token: priorToken });
+      const result = outcome.value as { ok: boolean; reason?: string };
       expect(result.ok).toBe(false);
       expect(result.reason).toBe('signature_mismatch');
     } finally {

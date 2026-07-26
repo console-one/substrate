@@ -15,7 +15,6 @@
  */
 
 import { Sequence, createType, indexSpec, bindFrom, eq } from '@console-one/sequence';
-import { registerLabelRules } from '@console-one/sequenceutils/policies';
 
 // ─── indexgeneration.md ─────────────────────────────────────────────
 
@@ -128,67 +127,12 @@ describe('indexgeneration — structural predicate + incremental index', () => {
 
 // ─── backlinks.md ───────────────────────────────────────────────────
 
-describe('backlinks — inverted reference index', () => {
-  function newSeq(): Sequence {
-    const seq = new Sequence();
-    registerLabelRules(seq);
-    return seq;
-  }
-
-  test('AC1 [R1,R3]: labeled mount produces a backlink entry; removing the block removes it', () => {
-    // Backlinks for *block-labels* (not FT.ref refs) are what
-    // label-rules implements. The inverted index at
-    // `_labels.{label}.{identity}.{seq}` is the concrete backlink
-    // partition the spec asks for (R2).
-    const seq = newSeq();
-    const r = seq.mount('bind', 'doc.intro', 'hello', { label: 'data.metrics' });
-    expect(seq.get(`_labels.data.metrics.${seq.identity}.${r.blockSeq}`)).toBe(true);
-    // Invalidation is what "removes" a block in append-only land.
-    // The label index mirrors `_blocks.{id}.{seq}.label`; on
-    // invalidate, the label field is cleared, which cascades the
-    // index entry gone.
-  });
-
-  test('AC2 [R2]: backlinks live in a dedicated partition mirroring reference structure', () => {
-    const seq = newSeq();
-    seq.mount('bind', 'a', 1, { label: 'target' });
-    // The backlink partition is `_labels.*`; the identity prefix
-    // preserves attribution across peers. This is the dedicated
-    // partition R2 asks for.
-    expect(seq.keys('_labels').sort()).toEqual(['target']);
-    expect(seq.keys(`_labels.target`)).toContain(seq.identity);
-  });
-
-  test('AC5 [R7]: adding a reference updates only the target node\'s entries', () => {
-    const seq = newSeq();
-    seq.mount('bind', 'a', 1, { label: 'x' });
-    seq.mount('bind', 'b', 2, { label: 'y' });
-    const xBefore = seq.keys(`_labels.x.${seq.identity}`).slice();
-    const yBefore = seq.keys(`_labels.y.${seq.identity}`).slice();
-
-    // New reference to x.
-    seq.mount('bind', 'c', 3, { label: 'x' });
-    const xAfter = seq.keys(`_labels.x.${seq.identity}`).slice();
-    const yAfter = seq.keys(`_labels.y.${seq.identity}`).slice();
-
-    expect(xAfter.length).toBe(xBefore.length + 1);
-    expect(yAfter).toEqual(yBefore);  // y untouched
-  });
-
-  // AC3 [R4,R5] — strength score (concreteness × expansion cost).
-  // GENUINE GAP: label-rules stores `true` at the backlink path;
-  // there's no strength constraint attached. Needs a real scoring
-  // function over subject concreteness and subtree size.
-  test.todo('AC3 [R4,R5]: per-backlink strength score — requires new code');
-
-  // AC4 [R6] — three-tier presentation (expanded/compressed/decision).
-  // GENUINE GAP: requires strength scores first, then threshold
-  // classification logic (likely an indexSpec that reads the score).
-  test.todo('AC4 [R6]: strength → tier classification — requires strength score first');
-});
-
-
-// ─── typeindexing.md ────────────────────────────────────────────────
+// backlinks — RETIRED at deletion-ledger stage 4: the inverted label
+// index was v1 block-label machinery (registerLabelRules, sequenceutils/
+// policies). v2 carries labels as ordinary cells (label groups resolve
+// via electLabel; references are facts) — there is no block-label op to
+// index. The requirement's product need (find what references a
+// concept) is served by the cell graph's ref axis + declared concerns.
 
 describe('typeindexing — reverse index over type catalog', () => {
   test('AC1 [R1,R2]: a mounted tool\'s input type is retrievable and serializable', () => {

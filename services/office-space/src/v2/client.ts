@@ -88,6 +88,8 @@ export class OfficeSpaceClient {
 
   get isConnected(): boolean { return this.connected; }
 
+  private stateLoaded = false;
+
   constructor(config: ClientConfig) {
     this.config = config;
     this.seq = config.seq ?? new Sequence(() => Date.now());
@@ -97,6 +99,32 @@ export class OfficeSpaceClient {
     // snapshot (v1 rule, kept).
     this.ownsPersistence = config.seq === undefined || config.persistence !== undefined;
     this.transportCtor = config.transport ?? null;
+    // Node-fs persistence loads SYNCHRONOUSLY at construction (the v1
+    // contract: a fresh client on a dataDir sees its state at once,
+    // no boot() required). A bind-only snapshot applies synchronously
+    // inside receiveDocument — awaits occur only on call statements,
+    // which a snapshot never contains. Injected IStorage (browser)
+    // loads in boot() instead.
+    if (!this.persistence && config.seq === undefined) {
+      const snap = this.readKeySync('snapshot.ft');
+      if (snap) void receiveDocument(this.seq, snap);
+      this.loadMeta(this.readKeySync('meta.json'));
+      this.stateLoaded = true;
+    }
+  }
+
+  private readKeySync(key: string): string | null {
+    const p = join(this.config.dataDir, key);
+    try { return existsSync(p) ? readFileSync(p, 'utf-8') : null; } catch { return null; }
+  }
+
+  private loadMeta(raw: string | null): void {
+    if (!raw) return;
+    try {
+      const meta = JSON.parse(raw) as Partial<Meta>;
+      if (typeof meta.lastServerSeq === 'number') this.lastServerSeq = meta.lastServerSeq;
+      if (Array.isArray(meta.pendingBuffer)) this.pendingBuffer = meta.pendingBuffer as string[];
+    } catch { /* corrupt meta is bookkeeping only — start clean */ }
   }
 
   on(cb: (event: ClientEvent) => void): () => void {
@@ -142,20 +170,13 @@ export class OfficeSpaceClient {
   }
 
   private async loadState(): Promise<void> {
-    if (!this.ownsPersistence || this.config.seq !== undefined) {
-      // Injected kernel: caller owns state; only bookkeeping loads.
-    } else {
+    if (this.stateLoaded) return;
+    if (this.ownsPersistence && this.config.seq === undefined) {
       const snapshot = await this.readKey('snapshot.ft');
       if (snapshot) await receiveDocument(this.seq, snapshot);
     }
-    const metaRaw = await this.readKey('meta.json');
-    if (metaRaw) {
-      try {
-        const meta = JSON.parse(metaRaw) as Partial<Meta>;
-        if (typeof meta.lastServerSeq === 'number') this.lastServerSeq = meta.lastServerSeq;
-        if (Array.isArray(meta.pendingBuffer)) this.pendingBuffer = meta.pendingBuffer as string[];
-      } catch { /* corrupt meta is bookkeeping only — start clean */ }
-    }
+    this.loadMeta(await this.readKey('meta.json'));
+    this.stateLoaded = true;
   }
 
   // ── lifecycle ─────────────────────────────────────────────────────
@@ -312,6 +333,29 @@ export class OfficeSpaceClient {
 
   get(path: string): unknown { return this.seq.get(path); }
   keys(prefix?: string): string[] { return this.seq.keys(prefix); }
+
+  /** Unfilled typed obligations — CLAIM SLOTS in v2 terms: a cell with
+   *  a declared (non-fn) type and no value is awaiting an external
+   *  actor. `tools` is reserved for gap→tool inference (auto-wire's
+   *  territory upstream); it is not fabricated here. */
+  gaps(): Array<{ path: string; tools: string[] }> {
+    const out: Array<{ path: string; tools: string[] }> = [];
+    for (const cell of this.seq.cells()) {
+      if (!cell.path || cell.path.startsWith('_')) continue;
+      if (cell.type !== undefined && cell.type.kind !== 'fn' && cell.value === undefined) {
+        out.push({ path: cell.path, tools: [] });
+      }
+    }
+    return out;
+  }
+
+  /** Record a contract breach as state (timeout, inability) — the
+   *  violation is a fact at the scope it concerns, synced like any. */
+  reportViolation(scope: string, message: string, retryMs?: number): void {
+    const lines = [`${scope}.violation = ${JSON.stringify(message)}`];
+    if (retryMs !== undefined) lines.push(`${scope}.retryAfterMs = ${retryMs}`);
+    void this.mount(lines.join('\n'));
+  }
 
   /** Scheduled facts: suspended blocks whose `where` carries a future
    *  `gt('_rt', T)` bound, sorted by fire time. No sidecar field is

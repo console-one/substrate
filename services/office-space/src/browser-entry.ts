@@ -18,8 +18,8 @@
  */
 
 import { runBrowserEnv, type BrowserEnvHandle } from './env/browser';
-import { wrapClient, type OfficeSpaceAPI } from '@console-one/sequenceutils/transport';
-import type { ClientEvent } from '@console-one/sequenceutils/transport';
+import { wrapClient, type OfficeSpaceAPI } from './v2/api';
+import type { ClientEvent } from './v2/client';
 
 declare global {
   interface Window {

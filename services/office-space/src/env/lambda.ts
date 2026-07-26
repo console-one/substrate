@@ -42,7 +42,7 @@
 
 import { PermanentAgent } from '../agent';
 import type { AgentRunResult } from '../agent';
-import type { PriorSnapshot } from '@console-one/sequenceutils/transport';
+import type { PriorSnapshot } from '../v2/server.js';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 

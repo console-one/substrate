@@ -22,7 +22,7 @@ import { ContextGraphServer } from '../office-space-server.js';
 import { runBrowserEnv } from '../env/browser';
 import { resetAllBrowserStorage } from '@console-one/sequence/v2';
 import { WebSocket as NodeWebSocket } from 'ws';
-import type { WebSocketCtor } from '@console-one/sequenceutils/transport';
+import type { WebSocketCtor } from '../v2/client.js';
 
 // ═══════════════════════════════════════════════════════════════════════
 // In-process WebSocket: a thin wrapper that routes `send` through the

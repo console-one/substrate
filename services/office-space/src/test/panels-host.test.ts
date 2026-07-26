@@ -14,8 +14,8 @@
  * test covers the type-state + registry primitives that drive it.
  */
 
-import { Sequence } from '@console-one/sequence';
-import { registerStdlibPanels } from '@console-one/sequenceutils/transport';
+import { Sequence } from '@console-one/sequence/v2';
+import { registerStdlibPanels } from '../v2/panels.js';
 
 test('registerStdlibPanels mounts the four default panel configs (gaps panel removed)', () => {
   const seq = new Sequence(() => Date.now());
@@ -48,12 +48,10 @@ test('panels.list (the browser-entry surface) returns sorted PanelInfo by positi
 
   // Mount a custom panel after stdlib — order=5 means it comes
   // BEFORE files (order=10) in the same `sidebar` bucket.
-  seq.mount([
-    { op: 'bind', path: '_panels.recents.title', value: 'Recents' },
-    { op: 'bind', path: '_panels.recents.position', value: 'sidebar' },
-    { op: 'bind', path: '_panels.recents.order', value: 5 },
-    { op: 'bind', path: '_panels.recents.render', value: 'recents-panel' },
-  ]);
+  seq.insert({ path: '_panels.recents.title', value: 'Recents' });
+  seq.insert({ path: '_panels.recents.position', value: 'sidebar' });
+  seq.insert({ path: '_panels.recents.order', value: 5 });
+  seq.insert({ path: '_panels.recents.render', value: 'recents-panel' });
 
   // Replicate the browser-entry's list() implementation so this test
   // stays in plain Node — proves the shape and order without coupling

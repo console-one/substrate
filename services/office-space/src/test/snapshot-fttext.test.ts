@@ -14,7 +14,7 @@
  *     things that aren't part of the Sequence's own state)
  */
 
-import { OfficeSpaceClient } from '@console-one/sequenceutils/transport';
+import { OfficeSpaceClient } from '../v2/client.js';
 import { existsSync, readFileSync, rmSync, mkdtempSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';

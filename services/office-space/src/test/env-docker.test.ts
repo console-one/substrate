@@ -20,7 +20,7 @@
  */
 
 import { runDockerEnv } from '../env/docker';
-import { OfficeSpaceClient } from '@console-one/sequenceutils/transport';
+import { OfficeSpaceClient } from '../v2/client.js';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { existsSync, rmSync, mkdtempSync } from 'fs';

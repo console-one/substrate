@@ -1,56 +1,14 @@
 /**
- * office-space-server.ts — Composition of the public packages into
- * the Office Space product server.
+ * office-space-server.ts — the product's server entry point.
  *
- * Extends `@console-one/sequenceutils/transport`'s `ContextGraphServer`
- * with pre-wired `register` + `onTick` hooks that install the
- * lifecycle policies (from `@console-one/sequenceutils/policies`) and
- * base tools (from `@console-one/sequenceutils/tools`). Callers that
- * need additional product-specific rules pass their own `register`
- * / `onTick` in `ServerConfig`; those are chained AFTER the
- * built-in composition so built-in state is already mounted when
- * user rules fire.
+ * Deletion-ledger STAGE 4: this module used to extend
+ * `@console-one/sequenceutils/transport`'s v1-kernel ContextGraphServer,
+ * pre-composing v1 policies/tools. The v2 server (src/v2/server.ts)
+ * installs its own constitution from `@console-one/sequence/v2`
+ * (writer authority, session lifecycle, holder release, auth caps,
+ * base tools) — so the wrapper's whole job disappeared. This file
+ * remains as the stable import path its consumers and tests use.
  */
 
-import {
-  ContextGraphServer as BaseServer,
-  type ServerConfig as BaseConfig,
-  type PriorSnapshot,
-} from '@console-one/sequenceutils/transport';
-// Storage adapters live on the v2 kernel surface since deletion-ledger
-// stage 3; the IStorage contract is structurally identical, so v2
-// instances flow into the (still-v1) transport server unchanged.
-import { NodeStorage } from '@console-one/sequence/v2';
-import { registerLabelRules } from '@console-one/sequenceutils/policies';
-import { registerBaseTools } from '@console-one/sequenceutils/tools';
-import type { Sequence } from '@console-one/sequence';
-
-export interface ServerConfig extends BaseConfig {
-  /** Same shape as the transport's ServerConfig — this wrapper
-   *  adds no new fields, only pre-composes the register + onTick
-   *  hooks with phase/session/label rules + base tools. */
-}
-
-export type { PriorSnapshot };
-
-export class ContextGraphServer extends BaseServer {
-  constructor(config: ServerConfig) {
-    const storage = config.storage ?? (config.workspaceRoot
-      ? new NodeStorage(config.workspaceRoot)
-      : new NodeStorage(`${process.cwd()}/workspace`));
-    const userRegister = config.register;
-    const userOnTick = config.onTick;
-    super({
-      ...config,
-      storage,
-      register: (seq: Sequence) => {
-        registerLabelRules(seq);
-        registerBaseTools(seq, { storage });
-        if (userRegister) userRegister(seq);
-      },
-      onTick: (seq: Sequence) => {
-        if (userOnTick) userOnTick(seq);
-      },
-    });
-  }
-}
+export { ContextGraphServer } from './v2/server';
+export type { ServerConfig, PriorSnapshot } from './v2/server';

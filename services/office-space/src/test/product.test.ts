@@ -1,14 +1,27 @@
 import { ContextGraphServer } from '../office-space-server.js';
-import { OfficeSpaceClient } from '@console-one/sequenceutils/transport';
-import { PermanentAgent } from '../agent.js';
+import { OfficeSpaceClient } from '../v2/client.js';
+import type { Sequence } from '@console-one/sequence/v2';
 import WebSocket from 'ws';
 import { mkdtempSync, rmSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
+// Re-expressed on the v2 transport — deletion-ledger stage 4.
+
 function tmpDb(): string {
   const dir = mkdtempSync(join(tmpdir(), 'cg-test-'));
   return join(dir, 'test.db');
+}
+
+/** Poll until `fn` returns truthy (the transport applies async). */
+async function until<T>(fn: () => T, ms = 5000): Promise<T> {
+  const t0 = Date.now();
+  for (;;) {
+    const v = fn();
+    if (v) return v;
+    if (Date.now() - t0 > ms) throw new Error('until: timed out');
+    await new Promise((r) => setTimeout(r, 20));
+  }
 }
 
 function createClient(port: number): Promise<{
@@ -18,33 +31,12 @@ function createClient(port: number): Promise<{
 }> {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(`ws://localhost:${port}`);
-    const queue: string[] = [];
-    const waiters: { match?: string; resolve: (s: string) => void }[] = [];
-
-    ws.on('message', (raw: any) => {
-      const text = raw.toString();
-      const idx = waiters.findIndex(w => !w.match || text.includes(w.match));
-      if (idx >= 0) {
-        waiters.splice(idx, 1)[0].resolve(text);
-      } else {
-        queue.push(text);
-      }
-    });
-
+    const messages: string[] = [];
+    ws.on('message', (raw: any) => messages.push(raw.toString()));
     ws.on('open', () => resolve({
       send: (ft: string) => ws.send(ft),
-      waitForRender: (match?: string, timeout = 5000) => {
-        const idx = queue.findIndex(t => !match || t.includes(match));
-        if (idx >= 0) return Promise.resolve(queue.splice(idx, 1)[0]);
-        return new Promise((res, rej) => {
-          const timer = setTimeout(() => {
-            const wi = waiters.findIndex(w => w.resolve === res);
-            if (wi >= 0) waiters.splice(wi, 1);
-            rej(new Error(`timeout waiting for render${match ? ` containing "${match}"` : ''}`));
-          }, timeout);
-          waiters.push({ match, resolve: (s) => { clearTimeout(timer); res(s); } });
-        });
-      },
+      waitForRender: (match?: string, timeout = 5000) =>
+        until(() => messages.find((t) => !match || t.includes(match)), timeout),
       close: () => ws.close(),
     }));
     ws.on('error', reject);
@@ -56,9 +48,20 @@ describe('Context Graph — boot() environment model', () => {
   let port: number;
   let dbPath: string;
 
+  // v2 has no bootstrap.ft — the v1 constitution parsed a file at boot;
+  // v2 installs rules-as-data and lets the product register its own
+  // fixture facts. `org.name` / `workspace` are the boot-state this
+  // suite's "bootstrap tools" test asserts, provided explicitly here
+  // (ENGINE-GAP-MAP rule: needs new code per case bypassed abstraction —
+  // this is the ONE fixture, not a shadow bootstrap file).
+  const registerFixture = (seq: Sequence): void => {
+    seq.insert({ path: 'org.name', value: 'Acme Ltd' });
+    seq.insert({ path: 'workspace', value: 'main' });
+  };
+
   beforeEach(async () => {
     dbPath = tmpDb();
-    server = new ContextGraphServer({ port: 0, dbPath });
+    server = new ContextGraphServer({ port: 0, dbPath, register: registerFixture });
     port = await server.start();
   });
 
@@ -94,15 +97,19 @@ describe('Context Graph — boot() environment model', () => {
     await c1.waitForRender('survives restart');
     c1.close();
 
-    // Stop and restart server with same db
+    // Stop and restart server with same dbPath — the journal (the ft
+    // delta log, per-partition) replays before the socket reopens.
     await server.stop();
-    server = new ContextGraphServer({ port: 0, dbPath });
+    server = new ContextGraphServer({ port: 0, dbPath, register: registerFixture });
     port = await server.start();
+
+    // Real assertion (v2 gives direct kernel access, unlike the v1
+    // test's punted "at least boots clean" comment): the persisted
+    // value is actually there post-restart.
+    expect(server.seq!.get('persistent.data')).toBe('survives restart');
 
     const c2 = await createClient(port);
     const view = await c2.waitForRender('workspace');
-    // The bootstrap state is there but persisted data may need the persistence
-    // cycle to have run — verify the server at least boots clean
     expect(view).toContain('workspace');
     c2.close();
   });
@@ -126,15 +133,16 @@ describe('Context Graph — boot() environment model', () => {
   });
 
   test('multiple clients write concurrently to the same Sequence', async () => {
+    // v2 installs no domain schema by default (no bootstrap.ft to
+    // declare a taskqueue type) — tasks.* accepts any value the same
+    // way `hello = "world"` above does. The field/value shapes below
+    // are kept as-is (they mirror the product's real usage) even
+    // though nothing here can reject an out-of-shape write anymore.
     const c1 = await createClient(port);
     const c2 = await createClient(port);
     await c1.waitForRender('workspace');
     await c2.waitForRender('workspace');
 
-    // Use taskqueue-valid fields: input is declared as string, status
-    // must be in pending|active|done|expired. Writing invalid data
-    // (object slot with a string, or status outside the enum) is
-    // rejected at admission per the substrate's coherence.
     c1.send('tasks.alice.input = "review code"\ntasks.alice.status = "pending"');
     c2.send('tasks.bob.input = "write tests"\ntasks.bob.status = "pending"');
 
@@ -151,10 +159,6 @@ describe('Context Graph — boot() environment model', () => {
     const c = await createClient(port);
     await c.waitForRender('workspace');
 
-    // Write task fields using taskqueue-valid types: input is
-    // string, status is in pending|active|done|expired, assignee is
-    // string. Invalid values (out-of-enum status, undeclared fields)
-    // are rejected at admission per the substrate's coherence.
     c.send('tasks.t1.input = "Ship v1"');
     const r1 = await c.waitForRender('Ship v1');
     expect(r1).toContain('tasks.t1.input');
@@ -257,7 +261,7 @@ describe('Context Graph — boot() environment model', () => {
   });
 
   test('offline client buffers and syncs on connect', async () => {
-    const dataDir = join(tmpdir(), `os-test-${Date.now()}`);
+    const dataDir = mkdtempSync(join(tmpdir(), 'os-test-'));
 
     const client = new OfficeSpaceClient({
       dataDir,
@@ -267,8 +271,9 @@ describe('Context Graph — boot() environment model', () => {
       heartbeatMs: 60000,
     });
 
-    // Mount locally while disconnected
-    client.mount('local.note = "written offline"');
+    // Mount locally while disconnected — v2's mount() applies to the
+    // client's own kernel first (always local), then sends or buffers.
+    await client.mount('local.note = "written offline"');
     expect(client.get('local.note')).toBe('written offline');
 
     // Boot connects and syncs
@@ -282,39 +287,22 @@ describe('Context Graph — boot() environment model', () => {
     c.close();
     client.shutdown();
 
-    // Cleanup
     try { rmSync(dataDir, { recursive: true }); } catch {}
   });
 
   test('permanent agent runs execution cycle and reports results', async () => {
-    const dataDir = join(tmpdir(), `os-agent-${Date.now()}`);
-
+    const { PermanentAgent } = await import('../agent.js');
     const agent = new PermanentAgent({
-      agentId: 'testagent',
+      agentId: 'agent_smith',
       serverUrl: `ws://localhost:${port}`,
-      dataDir,
-      maxExecutionMs: 5000,
-      schedule: { runWhileGaps: true, minDelayMs: 1000 },
+      dataDir: mkdtempSync(join(tmpdir(), 'agent-test-')),
     });
-
     const result = await agent.run();
-
-    // Agent should have connected, found no fillable gaps (no tools registered),
-    // and stopped with longwait or complete
     expect(['complete', 'longwait']).toContain(result.stopReason);
-    expect(result.gapsFilled).toBe(0);
-
-    // Verify agent state was pushed to server. Wait for the specific
-    // `agents.testagent` prefix — plain `testagent` now also appears
-    // in session.* paths set by the session rules (e.g.
-    // `sessions.testagent.status = "active"`), so a broad match would
-    // resolve on session state before the agent's own state lands.
-    const c = await createClient(port);
-    const view = await c.waitForRender('agents.testagent');
-    expect(view).toContain('agents.testagent');
-
-    c.close();
-    try { rmSync(dataDir, { recursive: true }); } catch {}
+    expect(result.gapsFilled).toBe(0); // no tools registered
+    // The agent's state was pushed to the server like any session's.
+    await until(() => server.seq!.getCell('agents.agent_smith.lastRun')?.value);
+    expect(server.seq!.getCell('agents.agent_smith.stopReason')?.value).toBe(result.stopReason);
   });
 
   test('reader contract mounts as observable state', async () => {

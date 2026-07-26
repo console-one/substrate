@@ -32,11 +32,11 @@
  * browser global — it needs to stay Node-loadable for tests).
  */
 
-import { OfficeSpaceClient } from '@console-one/sequenceutils/transport';
-import type { ClientEvent, WebSocketCtor } from '@console-one/sequenceutils/transport';
+import { OfficeSpaceClient } from '../v2/client.js';
+import type { ClientEvent, WebSocketCtor } from '../v2/client.js';
 import { BrowserStorage } from '@console-one/sequence/v2';
 import type { BrowserStorageConfig } from '@console-one/sequence/v2';
-import { registerStdlibPanels } from '@console-one/sequenceutils/transport';
+import { registerStdlibPanels } from '../v2/panels.js';
 
 export interface BrowserEnvConfig {
   /** Logical user identity this env holds a session for. */
@@ -129,7 +129,7 @@ export async function runBrowserEnv(config: BrowserEnvConfig): Promise<BrowserEn
   // restore (if any) doesn't clobber them; if a snapshot had stale
   // panel mounts, this re-mount overwrites with the current stdlib
   // values. See specs/docs/READER_DOCUMENTS.md and panels.ts.
-  registerStdlibPanels((client as unknown as { seq: import('@console-one/sequence').Sequence }).seq);
+  registerStdlibPanels(client.seq);
 
   const shutdown = async (): Promise<void> => {
     try { client.shutdown(); } catch {}

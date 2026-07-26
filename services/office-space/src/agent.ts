@@ -14,8 +14,8 @@
  * Workers are interchangeable — whoever can schedule the agent's work does.
  */
 
-import { OfficeSpaceClient, type ClientEvent } from '@console-one/sequenceutils/transport';
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { OfficeSpaceClient } from './v2/client.js';
+import { existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 
 export interface AgentConfig {
@@ -89,15 +89,21 @@ export class PermanentAgent {
     let stopReason: AgentRunResult['stopReason'] = 'complete';
 
     try {
-      // Boot and connect
+      // Boot and connect. boot() is offline-capable (it never blocks on
+      // the socket), but this runtime's own contract is step 2: connect
+      // and sync BEFORE working. Give the socket a bounded window; on
+      // timeout proceed offline — mounts buffer and flush next connect.
       await this.client.boot();
+      const connectDeadline = Date.now() + 2_000;
+      while (!this.client.isConnected && Date.now() < connectDeadline) {
+        await new Promise((r) => setTimeout(r, 20));
+      }
 
-      // Register local tools
+      // Register local tools: impls on the local kernel's registry
+      // (the v2 way — an offer without a mounted fn type is a lie).
       if (this.config.tools) {
         for (const [name, impl] of Object.entries(this.config.tools)) {
-          this.client.mount(`tool ${name}`);
-          // The impl is registered on the local sequence
-          (this.client as any).seq?.mount('tool', name, impl);
+          this.client.seq.impls.set(name, impl);
         }
       }
 
@@ -133,7 +139,7 @@ export class PermanentAgent {
                 const impl = this.config.tools[capId];
                 const result = impl(this.client.get(gap.path));
                 if (result !== undefined) {
-                  this.client.mount(`${gap.path} = ${JSON.stringify(result)}`);
+                  await this.client.mount(`${gap.path} = ${JSON.stringify(result)}`);
                   gapsFilled++;
                   filledThisRound = true;
                 }
@@ -171,7 +177,7 @@ export class PermanentAgent {
       : undefined;
 
     // Mount scheduling state on server
-    this.client.mount([
+    await this.client.mount([
       `agents.${this.config.agentId}.lastRun = ${Date.now()}`,
       `agents.${this.config.agentId}.stopReason = "${stopReason}"`,
       `agents.${this.config.agentId}.gapsFilled = ${gapsFilled}`,
@@ -197,6 +203,6 @@ export class PermanentAgent {
   /** Push agent snapshot from local data dir to remote store. */
   static async push(agentId: string, storeUrl: string, dataDir: string): Promise<void> {
     // In production this would upload to the server's store API
-    // The snapshot at dataDir/agentId/snapshot.json is already current
+    // The snapshot at dataDir/agentId/snapshot.ft is already current
   }
 }

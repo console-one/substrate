@@ -12,8 +12,8 @@
  */
 
 import * as readline from 'readline';
-import { OfficeSpaceClient } from '@console-one/sequenceutils/transport';
-import type { ClientEvent } from '@console-one/sequenceutils/transport';
+import { OfficeSpaceClient } from './v2/client.js';
+import type { ClientEvent } from './v2/client.js';
 import {
   Sequence,
   createType,
@@ -23,7 +23,7 @@ import {
   selectFirstBranch,
   FT,
   type Type,
-} from '@console-one/sequence';
+} from '@console-one/sequence/v2';
 import { join } from 'path';
 import { homedir } from 'os';
 import { mkdirSync, existsSync } from 'fs';
@@ -37,11 +37,11 @@ import { mkdirSync, existsSync } from 'fs';
 /** Mount renderers as fn schemas + pure tools. Called once at boot. */
 export function mountRenderers(seq: Sequence): void {
   // Document renderer: requires content:string in scope
-  seq.mount('schema', '_render.document', createType('fn', [
+  seq.insert({ path: '_render.document', type: createType('fn', [
     param(createType('object', [property('content', FT.string(), false)])),
     returns(FT.string()),
-  ]));
-  seq.mount('tool', '_render.document', (input: Record<string, unknown>) => {
+  ]) });
+  seq.impls.set('_render.document', (input: Record<string, unknown>) => {
     const lines: string[] = [];
     const title = input.title as string | undefined;
     if (title) { lines.push(`\x1b[1m${title}\x1b[0m`); lines.push(''); }
@@ -60,11 +60,11 @@ export function mountRenderers(seq: Sequence): void {
   });
 
   // Directory renderer: accepts any object scope (fallback)
-  seq.mount('schema', '_render.directory', createType('fn', [
+  seq.insert({ path: '_render.directory', type: createType('fn', [
     param(createType('object', [])),
     returns(FT.string()),
-  ]));
-  seq.mount('tool', '_render.directory', (input: Record<string, unknown>) => {
+  ]) });
+  seq.impls.set('_render.directory', (input: Record<string, unknown>) => {
     const entries = Object.entries(input).filter(([, v]) => v !== undefined);
     if (entries.length === 0) return '\x1b[2m(empty)\x1b[0m';
     const lines: string[] = [];
@@ -123,7 +123,7 @@ function dispatchRenderer(seq: Sequence, scope: string, keys: string[]): string 
   const selected = selectFirstBranch(union, scopeType);
   if (!selected) return '\x1b[2m(no matching renderer)\x1b[0m';
 
-  const impl = seq.toolAt(`_render.${pairs[selected.index].name}`);
+  const impl = seq.impls.get(`_render.${pairs[selected.index].name}`);
   if (!impl) return '\x1b[2m(no impl)\x1b[0m';
   return (impl as Function)(collectScopeData(seq, scope, keys)) as string;
 }
@@ -170,7 +170,7 @@ export async function runConsole(config: ConsoleConfig): Promise<void> {
     if (config.silent) return;
     readline.clearLine(process.stdout, 0);
     readline.cursorTo(process.stdout, 0);
-    const seq = (client as any).seq as Sequence;
+    const seq = client.seq;
     const keys = scope
       ? seq.keys(scope)
       : seq.keys().filter((k: string) => !k.startsWith('_'));
@@ -214,7 +214,7 @@ export async function runConsole(config: ConsoleConfig): Promise<void> {
   });
 
   await client.boot();
-  mountRenderers((client as any).seq as Sequence);
+  mountRenderers(client.seq);
   if (!config.silent) console.log(`\x1b[2m${user}@${serverUrl}\x1b[0m\n`);
   display();
   rl.setPrompt(promptStr());
@@ -260,11 +260,9 @@ export async function runConsole(config: ConsoleConfig): Promise<void> {
       }).join('\n');
     }
 
-    try {
-      client.mount(ftText);
-    } catch (e: any) {
+    client.mount(ftText).catch((e: Error) => {
       if (!config.silent) console.log(`\x1b[31m${e.message}\x1b[0m`);
-    }
+    });
     rl.prompt();
   });
 

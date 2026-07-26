@@ -8,7 +8,7 @@
  * in Jest needs a real module path.
  */
 
-import { Sequence } from '@console-one/sequence';
+import { Sequence } from '@console-one/sequence/v2';
 import {
   KitInstaller,
   NodeKitResolver,
