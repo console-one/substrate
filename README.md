@@ -23,17 +23,17 @@ The fastest way to understand what this substrate does is to walk the
 priced, accountable:
 
 ```bash
-# Node 22+ · the repo consumes its sibling checkouts via file: deps
-git clone https://github.com/console-one/sequence
-git clone https://github.com/console-one/sequenceutils
+# Node 22+ · the kernel comes from npm: @console-one/sequence ≥0.2.0
 git clone https://github.com/console-one/substrate
-cd sequence && npm install && cd ..            # prepare script builds dist/
-cd sequenceutils && npm install && npm run build && cd ..
 cd substrate && npm install
 cd services/office-space
 node bin/office-space.cjs walk              # interactive, one beat at a time
 node bin/office-space.cjs walk --scripted   # full transcript at once
 ```
+
+(Hacking on the kernel itself alongside? Point the dep at your local
+checkout — `npm install ../../../sequence` from `services/office-space`
+— and everything below still holds.)
 
 You will watch: labeled narrative variants elected by budget · a
 connector installed as pure DATA · a secret addressable by alias only ·
@@ -50,10 +50,6 @@ is empty — and stays wired so any regression, or any future beat, fails
 loudly. The full spec:
 [`specs/docs/STORYBOARD_WALK.md`](specs/docs/STORYBOARD_WALK.md).
 
-> npm-standalone install is pending the next registry publish of
-> `@console-one/sequence` (the published 0.1.0 predates the `/v2`
-> kernel this repo runs on) — until then the sibling-clone above is
-> the supported path.
 
 ## Substrate packages
 

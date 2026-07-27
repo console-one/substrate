@@ -18,7 +18,7 @@
     "clean": "rm -rf dist dist-web"
   },
   "dependencies": {
-    "@console-one/sequence": "file:../../../sequence",
+    "@console-one/sequence": "^0.2.0",
     "better-sqlite3": "^11.0.0",
     "ws": "^8.18.0"
   },
